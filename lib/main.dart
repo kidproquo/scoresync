@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:developer' as developer;
+import 'widgets/score_viewer/score_viewer.dart';
+import 'widgets/video_player/youtube_player.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,12 +97,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
               ),
-              child: const ScoreViewerPlaceholder(),
+              child: const ScoreViewer(),
             ),
           ),
           Expanded(
             flex: 1,
-            child: const VideoPlayerPlaceholder(),
+            child: const YouTubePlayerWidget(),
           ),
         ],
       ),
@@ -108,76 +110,3 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class ScoreViewerPlaceholder extends StatelessWidget {
-  const ScoreViewerPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.grey[100],
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.picture_as_pdf,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Score Viewer',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'PDF score will be displayed here',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[500],
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class VideoPlayerPlaceholder extends StatelessWidget {
-  const VideoPlayerPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.grey[200],
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.video_library,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'YouTube Player',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Video will be displayed here',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[500],
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

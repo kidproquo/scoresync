@@ -34,6 +34,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  
+  # PDF viewer for displaying music scores
+  syncfusion_flutter_pdfviewer: ^26.2.14
+  
+  # File picker for selecting PDF files
+  file_picker: ^8.1.2
+  
+  # YouTube player for video playback
+  youtube_player_flutter: ^9.1.1
 
 dev_dependencies:
   flutter_test:

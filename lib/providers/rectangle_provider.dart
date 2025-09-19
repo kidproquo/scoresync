@@ -268,6 +268,9 @@ class RectangleProvider extends ChangeNotifier {
       case RectangleHandle.delete:
         // Delete handle shouldn't resize
         return;
+      case RectangleHandle.sync:
+        // Sync handle shouldn't resize
+        return;
     }
 
     // Ensure minimum size
@@ -293,5 +296,26 @@ class RectangleProvider extends ChangeNotifier {
     _notifyRectanglesChanged();
     developer.log('Finished resizing rectangle');
     notifyListeners();
+  }
+
+  void updateRectangle(DrawnRectangle updatedRectangle) {
+    final pageNumber = updatedRectangle.pageNumber;
+    final pageRectangles = _rectanglesByPage[pageNumber];
+    
+    if (pageRectangles != null) {
+      final index = pageRectangles.indexWhere((r) => r.id == updatedRectangle.id);
+      if (index != -1) {
+        pageRectangles[index] = updatedRectangle;
+        
+        // Update selected rectangle if it's the same one
+        if (_selectedRectangle?.id == updatedRectangle.id) {
+          _selectedRectangle = updatedRectangle;
+        }
+        
+        _notifyRectanglesChanged();
+        developer.log('Updated rectangle: ${updatedRectangle.id}');
+        notifyListeners();
+      }
+    }
   }
 }

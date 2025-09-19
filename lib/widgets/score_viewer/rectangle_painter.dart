@@ -65,8 +65,13 @@ class RectanglePainter extends CustomPainter {
       _drawHandles(canvas, rectangle);
     }
 
-    // Draw timestamp indicator if rectangle has timestamps
-    if (rectangle.hasTimestamps) {
+    // Draw timestamp badges inside selected rectangles
+    if (rectangle.isSelected && rectangle.hasTimestamps) {
+      _drawTimestampBadges(canvas, rectangle);
+    }
+
+    // Draw timestamp indicator if rectangle has timestamps (when not selected)
+    if (!rectangle.isSelected && rectangle.hasTimestamps) {
       _drawTimestampIndicator(canvas, rectangle);
     }
   }
@@ -95,6 +100,9 @@ class RectanglePainter extends CustomPainter {
 
     // Draw delete button at top-left
     _drawDeleteButton(canvas, rectangle, deleteSize);
+    
+    // Draw sync button next to delete button
+    _drawSyncButton(canvas, rectangle, deleteSize);
   }
 
   void _drawDeleteButton(Canvas canvas, DrawnRectangle rectangle, double size) {
@@ -134,6 +142,144 @@ class RectanglePainter extends CustomPainter {
       Offset(center.dx - iconSize / 2, center.dy + iconSize / 2),
       iconPaint,
     );
+  }
+
+  void _drawSyncButton(Canvas canvas, DrawnRectangle rectangle, double size) {
+    final syncRect = rectangle.getHandleRect(RectangleHandle.sync, deleteSize: size);
+    
+    // Draw blue circular background
+    final syncPaint = Paint()
+      ..color = Colors.blue
+      ..style = PaintingStyle.fill;
+    
+    final syncBorderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    canvas.drawCircle(syncRect.center, size / 2, syncPaint);
+    canvas.drawCircle(syncRect.center, size / 2, syncBorderPaint);
+
+    // Draw sync icon (link/chain icon)
+    final iconPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+
+    final iconSize = size * 0.4;
+    final center = syncRect.center;
+    
+    // Draw chain link icon
+    final linkSize = iconSize * 0.7;
+    
+    // Left oval
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(center.dx - linkSize * 0.3, center.dy),
+        width: linkSize * 0.6,
+        height: linkSize,
+      ),
+      iconPaint,
+    );
+    
+    // Right oval
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(center.dx + linkSize * 0.3, center.dy),
+        width: linkSize * 0.6,
+        height: linkSize,
+      ),
+      iconPaint,
+    );
+  }
+
+  void _drawTimestampBadges(Canvas canvas, DrawnRectangle rectangle) {
+    if (rectangle.timestamps.isEmpty) return;
+    
+    const badgeHeight = 20.0;
+    const badgePadding = 4.0;
+    const badgeSpacing = 2.0;
+    
+    final badgePaint = Paint()
+      ..color = Colors.green.withAlpha(230)
+      ..style = PaintingStyle.fill;
+      
+    final badgeBorderPaint = Paint()
+      ..color = Colors.green
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    
+    // Calculate starting position (below the action buttons area)
+    const buttonSize = 24.0; // Size of delete/sync buttons
+    final startX = rectangle.rect.left + badgePadding;
+    final startY = rectangle.rect.top + buttonSize + badgePadding * 2;
+    
+    double currentY = startY;
+    
+    for (int i = 0; i < rectangle.timestamps.length; i++) {
+      final timestamp = rectangle.timestamps[i];
+      final timeText = _formatDuration(timestamp);
+      
+      // Create text painter for measuring
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: timeText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      
+      final badgeWidth = textPainter.width + badgePadding * 2;
+      final badgeRect = Rect.fromLTWH(
+        startX,
+        currentY,
+        badgeWidth,
+        badgeHeight,
+      );
+      
+      // Draw badge background
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(badgeRect, const Radius.circular(10)),
+        badgePaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(badgeRect, const Radius.circular(10)),
+        badgeBorderPaint,
+      );
+      
+      // Draw text
+      textPainter.paint(
+        canvas,
+        Offset(
+          badgeRect.left + badgePadding,
+          badgeRect.top + (badgeHeight - textPainter.height) / 2,
+        ),
+      );
+      
+      currentY += badgeHeight + badgeSpacing;
+      
+      // Don't draw badges outside the rectangle
+      if (currentY + badgeHeight > rectangle.rect.bottom - badgePadding) {
+        break;
+      }
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+    if (duration.inHours > 0) {
+      String hours = twoDigits(duration.inHours);
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   void _drawTimestampIndicator(Canvas canvas, DrawnRectangle rectangle) {

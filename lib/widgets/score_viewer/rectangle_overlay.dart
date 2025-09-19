@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:developer' as developer;
 import '../../models/rectangle.dart';
 import '../../providers/rectangle_provider.dart';
 import '../../providers/app_mode_provider.dart';
+import '../../providers/video_provider.dart';
 import 'rectangle_painter.dart';
 
 class InteractiveRectangleOverlay extends StatefulWidget {
@@ -41,41 +43,43 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
   }
 
   void _handleTapDown(TapDownDetails details, RectangleProvider rectangleProvider, bool isDesignMode) {
-    if (!isDesignMode) return;
-
     final localPoint = _transformPoint(details.localPosition);
     
-    // Check if tapping on a handle
-    if (rectangleProvider.selectedRectangle != null) {
-      final handle = rectangleProvider.getHandleAt(localPoint);
-      if (handle != null) {
-        if (handle == RectangleHandle.delete) {
-          // Delete the rectangle
-          rectangleProvider.deleteSelectedRectangle();
-          return;
-        } else {
-          // Start resizing (only for non-delete handles)
-          rectangleProvider.startResizing(localPoint, handle);
-          return;
-        }
-      }
-    }
-
-    // Check if tapping on a rectangle
+    // Check if tapping on a rectangle first
     final rectangle = rectangleProvider.findRectangleAt(localPoint, widget.currentPageNumber);
     
     if (rectangle != null) {
-      // Check if clicking on delete button of any rectangle
-      final deleteHandle = rectangle.getHandleAt(localPoint);
-      if (deleteHandle == RectangleHandle.delete) {
+      final handle = rectangle.getHandleAt(localPoint);
+      
+      if (handle == RectangleHandle.delete) {
         rectangleProvider.selectRectangle(rectangle);
         rectangleProvider.deleteSelectedRectangle();
         return;
+      } else if (handle == RectangleHandle.sync && isDesignMode) {
+        // Handle sync button click
+        _handleSyncButtonTap(rectangle);
+        return;
+      } else if (rectangle.isSelected && rectangle.hasTimestamps) {
+        // Check if clicking on a timestamp badge
+        final tappedTimestamp = _getTimestampAtPoint(rectangle, localPoint);
+        if (tappedTimestamp != null) {
+          _handleTimestampBadgeTap(tappedTimestamp);
+          return;
+        }
       }
       
-      rectangleProvider.selectRectangle(rectangle);
-      rectangleProvider.startMoving(localPoint);
-    } else {
+      if (isDesignMode) {
+        rectangleProvider.selectRectangle(rectangle);
+        
+        if (handle != null && handle != RectangleHandle.delete && handle != RectangleHandle.sync) {
+          // Start resizing for resize handles
+          rectangleProvider.startResizing(localPoint, handle);
+        } else {
+          // Start moving
+          rectangleProvider.startMoving(localPoint);
+        }
+      }
+    } else if (isDesignMode) {
       // Start drawing new rectangle
       rectangleProvider.selectRectangle(null);
       rectangleProvider.startDrawing(localPoint, widget.currentPageNumber);
@@ -114,6 +118,91 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
       default:
         break;
     }
+  }
+
+  void _handleSyncButtonTap(DrawnRectangle rectangle) {
+    final videoProvider = context.read<VideoProvider>();
+    
+    if (!videoProvider.hasVideo) {
+      developer.log('No video loaded - cannot create sync point');
+      return;
+    }
+    
+    // Get current video position
+    final currentPosition = videoProvider.currentPosition;
+    
+    // Add timestamp to rectangle
+    final updatedRectangle = rectangle.copyWith(
+      timestamps: [...rectangle.timestamps, currentPosition],
+    );
+    
+    // Update rectangle in provider
+    final rectangleProvider = context.read<RectangleProvider>();
+    rectangleProvider.updateRectangle(updatedRectangle);
+    
+    developer.log('Added sync point at ${_formatDuration(currentPosition)} to rectangle ${rectangle.id}');
+  }
+
+  void _handleTimestampBadgeTap(Duration timestamp) {
+    final videoProvider = context.read<VideoProvider>();
+    
+    if (videoProvider.hasVideo) {
+      // Seek video to timestamp (we'll need to implement this)
+      videoProvider.seekTo(timestamp);
+      developer.log('Seeking video to ${_formatDuration(timestamp)}');
+    }
+  }
+
+  Duration? _getTimestampAtPoint(DrawnRectangle rectangle, Offset point) {
+    if (rectangle.timestamps.isEmpty) return null;
+    
+    const badgeHeight = 20.0;
+    const badgePadding = 4.0;
+    const badgeSpacing = 2.0;
+    const buttonSize = 24.0; // Size of delete/sync buttons
+    
+    final startX = rectangle.rect.left + badgePadding;
+    final startY = rectangle.rect.top + buttonSize + badgePadding * 2;
+    
+    double currentY = startY;
+    
+    for (int i = 0; i < rectangle.timestamps.length; i++) {
+      final timestamp = rectangle.timestamps[i];
+      final timeText = _formatDuration(timestamp);
+      
+      // Estimate badge width (simplified calculation)
+      final badgeWidth = timeText.length * 8.0 + badgePadding * 2;
+      final badgeRect = Rect.fromLTWH(
+        startX,
+        currentY,
+        badgeWidth,
+        badgeHeight,
+      );
+      
+      if (badgeRect.contains(point)) {
+        return timestamp;
+      }
+      
+      currentY += badgeHeight + badgeSpacing;
+      
+      // Don't check badges outside the rectangle
+      if (currentY + badgeHeight > rectangle.rect.bottom - badgePadding) {
+        break;
+      }
+    }
+    
+    return null;
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+    if (duration.inHours > 0) {
+      String hours = twoDigits(duration.inHours);
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   @override

@@ -128,6 +128,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       _isLoading = false;
     });
 
+    // Set up VideoProvider callback for seeking
+    final videoProvider = context.read<VideoProvider>();
+    videoProvider.setSeekToCallback(_onSeek);
+
     // Set a timeout to handle cases where player never becomes ready
     _loadingTimeout = Timer(const Duration(seconds: 10), () {
       if (mounted && !_isPlayerReady && _currentUrl == url) {
@@ -185,6 +189,13 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         _currentPosition = _controller!.value.position;
         _totalDuration = _controller!.metadata.duration;
       });
+
+      // Update VideoProvider with current state
+      final videoProvider = context.read<VideoProvider>();
+      videoProvider.setPlayerReady(isNowReady);
+      videoProvider.setPlaying(_isPlaying);
+      videoProvider.setCurrentPosition(_currentPosition);
+      videoProvider.setTotalDuration(_totalDuration);
       
       if (!wasReady && isNowReady) {
         developer.log('YouTube player ready - controls enabled');

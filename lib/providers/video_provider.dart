@@ -133,4 +133,20 @@ class VideoProvider extends ChangeNotifier {
   void clearVideo() {
     setCurrentUrl('');
   }
+
+  // Callback for seeking video - will be set by YouTube player
+  Function(Duration)? _seekToCallback;
+
+  void setSeekToCallback(Function(Duration)? callback) {
+    _seekToCallback = callback;
+  }
+
+  void seekTo(Duration position) {
+    if (_seekToCallback != null && _isPlayerReady) {
+      _seekToCallback!(position);
+      developer.log('Seeking to: ${_formatDuration(position)}');
+    } else {
+      developer.log('Cannot seek - no callback set or player not ready');
+    }
+  }
 }

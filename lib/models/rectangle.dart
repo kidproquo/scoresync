@@ -86,16 +86,26 @@ class DrawnRectangle {
           width: deleteSize,
           height: deleteSize,
         );
+      case RectangleHandle.sync:
+        // Sync button is next to delete button, to the right
+        return Rect.fromCenter(
+          center: Offset(rect.topLeft.dx + deleteSize, rect.topLeft.dy),
+          width: deleteSize,
+          height: deleteSize,
+        );
     }
   }
 
   RectangleHandle? getHandleAt(Offset point, {double size = 12.0, double deleteSize = 24.0}) {
-    // Check delete handle first (it's larger)
+    // Check action buttons first (they're larger)
     if (getHandleRect(RectangleHandle.delete, size: size, deleteSize: deleteSize).contains(point)) {
       return RectangleHandle.delete;
     }
+    if (getHandleRect(RectangleHandle.sync, size: size, deleteSize: deleteSize).contains(point)) {
+      return RectangleHandle.sync;
+    }
     
-    // Check other handles
+    // Check resize handles
     for (final handle in [RectangleHandle.topRight, RectangleHandle.bottomLeft, RectangleHandle.bottomRight]) {
       if (getHandleRect(handle, size: size, deleteSize: deleteSize).contains(point)) {
         return handle;
@@ -168,6 +178,7 @@ enum RectangleHandle {
   bottomLeft,
   bottomRight,
   delete, // Special handle for delete button
+  sync,   // Special handle for sync button
 }
 
 enum DrawingMode {

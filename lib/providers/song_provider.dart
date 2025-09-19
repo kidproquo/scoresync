@@ -203,7 +203,11 @@ class SongProvider extends ChangeNotifier {
         return;
       }
 
-      developer.log('Found song: ${song.name}, PDF: ${song.pdfPath}, Rectangles: ${song.rectangles.length}');
+      developer.log('Found song: ${song.name}, PDF: ${song.pdfPath}, Rectangles: ${song.rectangles.length}, VideoURL: ${song.videoUrl}');
+      
+      // Clear all providers first to ensure clean state
+      await _clearAllProviders();
+      
       await _setCurrentSong(song);
       await _loadSongDataIntoProviders(song);
       developer.log('Loaded song: $songName');
@@ -269,23 +273,6 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
-  // Update current song's video URL
-  Future<void> updateSongVideoUrl(String videoUrl) async {
-    if (_currentSong == null) return;
-
-    try {
-      final updatedSong = _currentSong!.copyWith(videoUrl: videoUrl);
-      await _saveSong(updatedSong);
-      _currentSong = updatedSong;
-      
-      developer.log('Updated song video URL');
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Failed to update video URL: $e';
-      developer.log('Error updating video URL: $e');
-      notifyListeners();
-    }
-  }
 
   // Update current song's rectangles
   Future<void> updateSongRectangles(List<DrawnRectangle> rectangles) async {
@@ -346,6 +333,27 @@ class SongProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Update video URL for current song
+  Future<void> updateSongVideoUrl(String videoUrl) async {
+    if (_currentSong == null) return;
+
+    try {
+      final updatedSong = _currentSong!.copyWith(videoUrl: videoUrl);
+      await _saveSongDirect(updatedSong);
+      _currentSong = updatedSong;
+      
+      // Update local songs list
+      _songs.removeWhere((s) => s.name == updatedSong.name);
+      _songs.add(updatedSong);
+      _songs.sort((a, b) => a.name.compareTo(b.name));
+      
+      developer.log('Saved video URL for song: ${_currentSong!.name}');
+      notifyListeners();
+    } catch (e) {
+      developer.log('Error updating video URL: $e');
+    }
+  }
+
   // Load song data into other providers
   Future<void> _loadSongDataIntoProviders(Song song) async {
     try {
@@ -369,8 +377,9 @@ class SongProvider extends ChangeNotifier {
         developer.log('Loading PDF: $absolutePdfPath, exists: ${pdfFile.existsSync()}');
         
         if (pdfFile.existsSync()) {
+          developer.log('ScoreProvider before loading PDF: ${_scoreProvider.hashCode}');
           await _scoreProvider!.loadPdf(pdfFile);
-          developer.log('PDF loaded into ScoreProvider');
+          developer.log('PDF successfully loaded into ScoreProvider');
           
           // If this was an absolute path, convert to relative for future persistence
           if (!_isRelativePath(song.pdfPath!)) {
@@ -389,30 +398,37 @@ class SongProvider extends ChangeNotifier {
           await _tryRecoverPdfFromSongDirectory(song);
         }
       } else {
-        developer.log('No PDF to load or ScoreProvider is null (pdfPath: ${song.pdfPath}, scoreProvider: ${_scoreProvider != null})');
+        developer.log('Skipping PDF load - pdfPath: ${song.pdfPath}, scoreProvider: ${_scoreProvider != null}');
       }
 
       // Load rectangles into RectangleProvider
       if (_rectangleProvider != null) {
+        developer.log('RectangleProvider before loading: ${_rectangleProvider.hashCode}');
         developer.log('Loading ${song.rectangles.length} rectangles');
         _rectangleProvider!.loadRectangles(song.rectangles);
-        developer.log('Rectangles loaded into RectangleProvider');
+        developer.log('Rectangles successfully loaded into RectangleProvider');
       } else {
         developer.log('RectangleProvider is null');
       }
 
       // Load video URL into VideoProvider
       if (song.videoUrl != null && _videoProvider != null) {
+        developer.log('VideoProvider before loading: ${_videoProvider.hashCode}');
         developer.log('Loading video URL: ${song.videoUrl!}');
         _videoProvider!.setVideoUrl(song.videoUrl!);
-        developer.log('Video URL loaded into VideoProvider');
+        developer.log('Video URL successfully loaded into VideoProvider');
+      } else {
+        developer.log('Skipping video load - videoUrl: ${song.videoUrl}, videoProvider: ${_videoProvider != null}');
       }
 
       // Load sync points into SyncProvider
       if (_syncProvider != null) {
+        developer.log('SyncProvider before loading: ${_syncProvider.hashCode}');
         developer.log('Loading ${song.syncPoints.length} sync points');
         _syncProvider!.loadSyncPoints(song.syncPoints);
-        developer.log('Sync points loaded into SyncProvider');
+        developer.log('Sync points successfully loaded into SyncProvider');
+      } else {
+        developer.log('SyncProvider is null');
       }
     } catch (e) {
       developer.log('Error loading song data into providers: $e');
@@ -422,10 +438,29 @@ class SongProvider extends ChangeNotifier {
   // Clear all providers
   Future<void> _clearAllProviders() async {
     try {
-      _scoreProvider?.clearPdf();
-      _rectangleProvider?.clearAllRectangles();
-      _videoProvider?.clearVideo();
-      _syncProvider?.clearAllSyncPoints();
+      developer.log('Clearing all providers before loading new song');
+      
+      if (_scoreProvider != null) {
+        _scoreProvider!.clearPdf();
+        developer.log('ScoreProvider cleared');
+      }
+      
+      if (_rectangleProvider != null) {
+        _rectangleProvider!.clearAllRectangles();
+        developer.log('RectangleProvider cleared');
+      }
+      
+      if (_videoProvider != null) {
+        _videoProvider!.clearVideo();
+        developer.log('VideoProvider cleared');
+      }
+      
+      if (_syncProvider != null) {
+        _syncProvider!.clearAllSyncPoints();
+        developer.log('SyncProvider cleared');
+      }
+      
+      developer.log('All providers cleared successfully');
     } catch (e) {
       developer.log('Error clearing providers: $e');
     }

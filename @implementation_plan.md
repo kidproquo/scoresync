@@ -188,6 +188,10 @@
 - **Song data persistence and management**
 - **Path-based PDF storage with relative paths**
 - **Song menu with New/Load/Delete functionality**
+- **Video URL persistence and auto-loading**
+- **YouTube player controller lifecycle management**
+- **Loading timeouts and retry mechanisms for failed videos**
+- **Enhanced user feedback during video loading states**
 
 ### 🚧 In Progress
 - None currently
@@ -225,4 +229,12 @@ lib/
 - ✅ All user interactions have appropriate feedback (comprehensive implementation)
 - ✅ Data persistence across app sessions (complete song management system)
 
-**Overall Progress**: **Phases 1-5 Complete** (5/12 phases) - Core functionality, state management, rectangle drawing, and data persistence fully implemented.
+**Overall Progress**: **Phases 1-5 Complete** (5/12 phases) - Core functionality, state management, rectangle drawing, data persistence, and robust video handling fully implemented.
+
+### 🔧 Recent Enhancements (Latest Session)
+- **Fixed video URL persistence**: Videos now auto-load when switching between songs
+- **Resolved YouTube controller disposal errors**: Proper lifecycle management prevents crashes
+- **Enhanced loading state handling**: Clear feedback during video initialization (~1.5s delay)
+- **Added timeout and retry mechanisms**: Videos that fail to load show error with retry option
+- **Improved duplicate loading prevention**: Prevents multiple simultaneous load attempts
+- **Storage verification**: Confirmed app data persists correctly across restarts and updates

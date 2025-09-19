@@ -140,22 +140,30 @@ class _VideoControlsState extends State<VideoControls> {
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onSkipBackward : null,
                 icon: const Icon(Icons.replay_10),
-                tooltip: '10 seconds backward',
+                tooltip: widget.isPlayerReady ? '10 seconds backward' : 'Loading video...',
               ),
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onPlayPause : null,
-                icon: Icon(widget.isPlaying ? Icons.pause : Icons.play_arrow),
-                tooltip: widget.isPlaying ? 'Pause' : 'Play',
+                icon: widget.isPlayerReady 
+                    ? Icon(widget.isPlaying ? Icons.pause : Icons.play_arrow)
+                    : const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                tooltip: widget.isPlayerReady 
+                    ? (widget.isPlaying ? 'Pause' : 'Play')
+                    : 'Loading video...',
               ),
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onStop : null,
                 icon: const Icon(Icons.stop),
-                tooltip: 'Stop',
+                tooltip: widget.isPlayerReady ? 'Stop' : 'Loading video...',
               ),
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onSkipForward : null,
                 icon: const Icon(Icons.forward_10),
-                tooltip: '10 seconds forward',
+                tooltip: widget.isPlayerReady ? '10 seconds forward' : 'Loading video...',
               ),
               const SizedBox(width: 16),
               Text(
@@ -172,21 +180,29 @@ class _VideoControlsState extends State<VideoControls> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const Spacer(),
-              DropdownButton<double>(
-                value: widget.playbackRate,
-                onChanged: widget.isPlayerReady ? (double? value) {
-                  if (value != null) widget.onPlaybackRateChanged(value);
-                } : null,
-                items: const [
-                  DropdownMenuItem(value: 0.5, child: Text('0.5x')),
-                  DropdownMenuItem(value: 1.0, child: Text('1.0x')),
-                  DropdownMenuItem(value: 1.25, child: Text('1.25x')),
-                  DropdownMenuItem(value: 1.5, child: Text('1.5x')),
-                  DropdownMenuItem(value: 2.0, child: Text('2.0x')),
-                ],
-                underline: Container(),
-                isDense: true,
-              ),
+              widget.isPlayerReady
+                  ? DropdownButton<double>(
+                      value: widget.playbackRate,
+                      onChanged: (double? value) {
+                        if (value != null) widget.onPlaybackRateChanged(value);
+                      },
+                      items: const [
+                        DropdownMenuItem(value: 0.5, child: Text('0.5x')),
+                        DropdownMenuItem(value: 1.0, child: Text('1.0x')),
+                        DropdownMenuItem(value: 1.25, child: Text('1.25x')),
+                        DropdownMenuItem(value: 1.5, child: Text('1.5x')),
+                        DropdownMenuItem(value: 2.0, child: Text('2.0x')),
+                      ],
+                      underline: Container(),
+                      isDense: true,
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: const Text(
+                        'Loading...',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
             ],
           ),
           const SizedBox(height: 8),

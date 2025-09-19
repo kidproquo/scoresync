@@ -7,7 +7,8 @@ class PageControls extends StatelessWidget {
   final VoidCallback onPreviousPage;
   final VoidCallback onNextPage;
   final VoidCallback onLastPage;
-  final VoidCallback onSelectPdf;
+  final VoidCallback? onSelectPdf;
+  final bool canSelectPdf;
 
   const PageControls({
     super.key,
@@ -17,7 +18,8 @@ class PageControls extends StatelessWidget {
     required this.onPreviousPage,
     required this.onNextPage,
     required this.onLastPage,
-    required this.onSelectPdf,
+    this.onSelectPdf,
+    this.canSelectPdf = true,
   });
 
   @override
@@ -67,7 +69,7 @@ class PageControls extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           OutlinedButton.icon(
-            onPressed: onSelectPdf,
+            onPressed: canSelectPdf ? onSelectPdf : null,
             icon: const Icon(Icons.folder_open, size: 18),
             label: const Text('Select PDF'),
             style: OutlinedButton.styleFrom(

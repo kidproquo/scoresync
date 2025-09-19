@@ -3,7 +3,12 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'package:provider/provider.dart';
+import '../../providers/score_provider.dart';
+import '../../providers/app_mode_provider.dart';
+import '../../providers/song_provider.dart';
 import 'page_controls.dart';
+import 'rectangle_overlay.dart';
 
 class ScoreViewer extends StatefulWidget {
   const ScoreViewer({super.key});
@@ -14,11 +19,7 @@ class ScoreViewer extends StatefulWidget {
 
 class _ScoreViewerState extends State<ScoreViewer> {
   PdfViewerController? _pdfViewerController;
-  File? _selectedPdfFile;
-  int _currentPageNumber = 1;
-  int _totalPages = 0;
-  bool _isLoading = false;
-  String? _errorMessage;
+  Size _pdfPageSize = const Size(612, 792); // Default US Letter size
 
   @override
   void initState() {
@@ -33,10 +34,9 @@ class _ScoreViewerState extends State<ScoreViewer> {
   }
 
   Future<void> _pickPdfFile() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    final scoreProvider = context.read<ScoreProvider>();
+    final songProvider = context.read<SongProvider>();
+    scoreProvider.setLoading(true);
 
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -47,96 +47,125 @@ class _ScoreViewerState extends State<ScoreViewer> {
 
       if (result != null && result.files.single.path != null) {
         final file = File(result.files.single.path!);
-        setState(() {
-          _selectedPdfFile = file;
-          _currentPageNumber = 1;
-          _totalPages = 0;
-        });
-        developer.log('PDF file selected: ${file.path}');
+        scoreProvider.setSelectedPdf(file);
+        
+        // Update the current song with the new PDF
+        await songProvider.updateSongPdf(file);
+        
+        developer.log('PDF file selected and saved to song: ${file.path}');
       } else {
         developer.log('PDF file selection cancelled');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error selecting PDF file: $e';
-      });
+      scoreProvider.setError('Error selecting PDF file: $e');
       developer.log('Error picking PDF file: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      scoreProvider.setLoading(false);
     }
   }
 
   void _onDocumentLoaded(PdfDocumentLoadedDetails details) {
-    setState(() {
-      _totalPages = details.document.pages.count;
-      _currentPageNumber = 1;
-    });
-    developer.log('PDF loaded with $_totalPages pages');
+    final scoreProvider = context.read<ScoreProvider>();
+    scoreProvider.setTotalPages(details.document.pages.count);
+    scoreProvider.setCurrentPage(1);
+    
+    // Get page size from first page
+    if (details.document.pages.count > 0) {
+      final page = details.document.pages[0];
+      _pdfPageSize = Size(page.size.width, page.size.height);
+    }
+    
+    developer.log('PDF loaded with ${scoreProvider.totalPages} pages');
   }
 
   void _onPageChanged(PdfPageChangedDetails details) {
-    setState(() {
-      _currentPageNumber = details.newPageNumber;
-    });
-    developer.log('Page changed to: $_currentPageNumber');
+    final scoreProvider = context.read<ScoreProvider>();
+    scoreProvider.setCurrentPage(details.newPageNumber);
+    
+    // Update page size for the current page
+    // Note: We'll use the same size from document load for consistency
+    
+    developer.log('Page changed to: ${details.newPageNumber}');
   }
 
   void _onDocumentLoadFailed(PdfDocumentLoadFailedDetails details) {
-    setState(() {
-      _errorMessage = 'Failed to load PDF: ${details.error}';
-    });
+    final scoreProvider = context.read<ScoreProvider>();
+    scoreProvider.setError('Failed to load PDF: ${details.error}');
     developer.log('PDF load failed: ${details.error}');
   }
 
   void _goToFirstPage() {
-    if (_pdfViewerController != null && _totalPages > 0) {
+    final scoreProvider = context.read<ScoreProvider>();
+    if (_pdfViewerController != null && scoreProvider.totalPages > 0) {
       _pdfViewerController!.jumpToPage(1);
     }
   }
 
   void _goToLastPage() {
-    if (_pdfViewerController != null && _totalPages > 0) {
-      _pdfViewerController!.jumpToPage(_totalPages);
+    final scoreProvider = context.read<ScoreProvider>();
+    if (_pdfViewerController != null && scoreProvider.totalPages > 0) {
+      _pdfViewerController!.jumpToPage(scoreProvider.totalPages);
     }
   }
 
   void _goToPreviousPage() {
-    if (_pdfViewerController != null && _currentPageNumber > 1) {
+    final scoreProvider = context.read<ScoreProvider>();
+    if (_pdfViewerController != null && scoreProvider.canGoToPreviousPage()) {
       _pdfViewerController!.previousPage();
     }
   }
 
   void _goToNextPage() {
-    if (_pdfViewerController != null && _currentPageNumber < _totalPages) {
+    final scoreProvider = context.read<ScoreProvider>();
+    if (_pdfViewerController != null && scoreProvider.canGoToNextPage()) {
       _pdfViewerController!.nextPage();
     }
   }
 
-  Widget _buildPdfViewer() {
-    if (_selectedPdfFile == null) {
+  Widget _buildPdfViewer(ScoreProvider scoreProvider, bool isDesignMode) {
+    if (scoreProvider.selectedPdfFile == null) {
       return _buildNoPdfSelected();
     }
 
-    if (_errorMessage != null) {
-      return _buildErrorState();
+    if (scoreProvider.errorMessage != null) {
+      return _buildErrorState(scoreProvider.errorMessage!);
     }
 
-    return SfPdfViewer.file(
-      _selectedPdfFile!,
+    final pdfViewer = SfPdfViewer.file(
+      scoreProvider.selectedPdfFile!,
       controller: _pdfViewerController,
       onDocumentLoaded: _onDocumentLoaded,
       onPageChanged: _onPageChanged,
       onDocumentLoadFailed: _onDocumentLoadFailed,
-      enableDoubleTapZooming: true,
+      enableDoubleTapZooming: !isDesignMode, // Disable zoom in design mode
+      interactionMode: isDesignMode 
+          ? PdfInteractionMode.selection // This prevents scrolling
+          : PdfInteractionMode.pan, // Normal interaction in playback mode
       canShowScrollHead: false,
       canShowScrollStatus: false,
       canShowPaginationDialog: false,
+      pageLayoutMode: PdfPageLayoutMode.single, // Show one page at a time
     );
+
+    // In design mode, wrap with rectangle overlay
+    if (isDesignMode) {
+      return InteractiveRectangleOverlay(
+        currentPageNumber: scoreProvider.currentPageNumber,
+        pdfPageSize: _pdfPageSize,
+        child: IgnorePointer(
+          child: pdfViewer, // Ignore PDF gestures in design mode
+        ),
+      );
+    }
+
+    // In playback mode, just show the PDF viewer
+    return pdfViewer;
   }
 
   Widget _buildNoPdfSelected() {
+    final songProvider = context.read<SongProvider>();
+    final hasSong = songProvider.currentSong != null;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -155,29 +184,26 @@ class _ScoreViewerState extends State<ScoreViewer> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap the button below to select a PDF score',
+            hasSong 
+                ? 'Tap the button below to select a PDF score'
+                : 'Create or load a song first to select a PDF',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[500],
                 ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: _isLoading ? null : _pickPdfFile,
-            icon: _isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.folder_open),
-            label: Text(_isLoading ? 'Loading...' : 'Select PDF'),
+            onPressed: hasSong ? _pickPdfFile : null,
+            icon: const Icon(Icons.folder_open),
+            label: const Text('Select PDF'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String errorMessage) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -198,7 +224,7 @@ class _ScoreViewerState extends State<ScoreViewer> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
-              _errorMessage!,
+              errorMessage,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.grey[600],
                   ),
@@ -218,22 +244,31 @@ class _ScoreViewerState extends State<ScoreViewer> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: _buildPdfViewer(),
-        ),
-        if (_selectedPdfFile != null && _totalPages > 0)
-          PageControls(
-            currentPage: _currentPageNumber,
-            totalPages: _totalPages,
-            onFirstPage: _goToFirstPage,
-            onPreviousPage: _goToPreviousPage,
-            onNextPage: _goToNextPage,
-            onLastPage: _goToLastPage,
-            onSelectPdf: _pickPdfFile,
-          ),
-      ],
+    return Consumer2<ScoreProvider, AppModeProvider>(
+      builder: (context, scoreProvider, appModeProvider, _) {
+        return Column(
+          children: [
+            if (scoreProvider.isLoading)
+              const LinearProgressIndicator(),
+            Expanded(
+              child: _buildPdfViewer(scoreProvider, appModeProvider.isDesignMode),
+            ),
+            if (scoreProvider.selectedPdfFile != null && scoreProvider.totalPages > 0)
+              Consumer<SongProvider>(
+                builder: (context, songProvider, _) => PageControls(
+                  currentPage: scoreProvider.currentPageNumber,
+                  totalPages: scoreProvider.totalPages,
+                  onFirstPage: _goToFirstPage,
+                  onPreviousPage: _goToPreviousPage,
+                  onNextPage: _goToNextPage,
+                  onLastPage: _goToLastPage,
+                  onSelectPdf: _pickPdfFile,
+                  canSelectPdf: songProvider.currentSong != null,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

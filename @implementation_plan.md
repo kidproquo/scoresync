@@ -40,35 +40,38 @@
 
 **Progress**: All Phase 3 tasks completed. Full YouTube player implemented with custom controls, URL input, seek bar, speed control, and error handling.
 
-## Phase 4: Mode Management & State Architecture
+## Phase 4: Mode Management & State Architecture ✅ **COMPLETED**
 **Goal**: Implement Design/Playback mode switching with proper state management
 
-- [ ] Set up state management (Provider or Riverpod)
-- [x] Create mode enum (Design, Playback) - Basic boolean implemented
+- [x] Set up state management (Provider)
+- [x] Create mode enum (Design, Playback)
 - [x] Implement mode switcher UI component - Switch widget in AppBar
-- [ ] Create providers for:
-  - [ ] App mode state
-  - [ ] Score state (current PDF, page)
-  - [ ] Video state (URL, position, playing status)
-  - [ ] Sync points collection
-- [ ] Ensure UI responds to mode changes
+- [x] Create providers for:
+  - [x] App mode state (`AppModeProvider`)
+  - [x] Score state (`ScoreProvider` - current PDF, page)
+  - [x] Video state (`VideoProvider` - URL, position, playing status)
+  - [x] Sync points collection (`SyncProvider`)
+  - [x] Rectangle management (`RectangleProvider`)
+  - [x] Song management (`SongProvider`)
+- [x] Ensure UI responds to mode changes
 
-**Status**: Partially complete - basic mode switching implemented, state management architecture needed
+**Progress**: All Phase 4 tasks completed. Complete state management architecture implemented with Provider pattern, comprehensive providers for all app features, and reactive UI updates.
 
-## Phase 5: Rectangle Drawing & Selection (Design Mode)
+## Phase 5: Rectangle Drawing & Selection (Design Mode) ✅ **COMPLETED**
 **Goal**: Enable rectangle drawing and manipulation on the score
 
-- [ ] Implement custom painter for rectangle overlay
-- [ ] Add gesture detection for drawing rectangles
-- [ ] Create rectangle data model
-- [ ] Implement rectangle selection with visual feedback
-- [ ] Add rectangle manipulation:
-  - [ ] Move selected rectangle
-  - [ ] Delete selected rectangle
-- [ ] Store rectangles per PDF page
-- [ ] Show rectangle boundaries clearly
+- [x] Implement custom painter for rectangle overlay (`RectanglePainter`)
+- [x] Add gesture detection for drawing rectangles
+- [x] Create rectangle data model (`DrawnRectangle`)
+- [x] Implement rectangle selection with visual feedback
+- [x] Add rectangle manipulation:
+  - [x] Move selected rectangle with drag
+  - [x] Delete selected rectangle with delete button
+  - [x] Resize rectangles with corner handles
+- [x] Store rectangles per PDF page
+- [x] Show rectangle boundaries clearly
 
-**Status**: Not started - folder structure exists but no implementation
+**Progress**: All Phase 5 tasks completed. Full rectangle drawing and manipulation system implemented with custom painter, gesture detection, selection feedback, drag-to-move, resize handles, and delete buttons.
 
 ## Phase 6: Sync Point Creation (Design Mode)
 **Goal**: Link rectangles to video timestamps
@@ -180,26 +183,33 @@
 - **Playback controls (play/pause/stop, seek, 10s skip)**
 - **Speed control and timestamp display**
 - **Comprehensive error handling for both PDF and video**
+- **Complete state management with Provider architecture**
+- **Rectangle drawing and manipulation system**
+- **Song data persistence and management**
+- **Path-based PDF storage with relative paths**
+- **Song menu with New/Load/Delete functionality**
 
 ### 🚧 In Progress
 - None currently
 
 ### 📋 Next Priority Tasks
-1. **Set up state management** - Implement Provider or Riverpod architecture
-2. **Create proper mode management** - Enhance Design/Playback mode switching
-3. **Implement sync point data models** - Rectangle and sync point structures
-4. **Begin rectangle drawing system** - Custom painter and gesture detection
+1. **Implement sync point creation** - Link rectangles to video timestamps
+2. **Create sync point management UI** - View and edit sync points list
+3. **Begin playback synchronization** - Auto-highlight rectangles during video playback
+4. **Add interactive playback** - Tap rectangles to seek video
 
 ### 📁 Project Structure Status
 ```
 lib/
-├── main.dart ✅ (Complete with ScoreViewer and YouTubePlayer integration)
-├── models/ ⏳ (Folder created, needs implementation)
-├── providers/ ⏳ (Folder created, needs implementation)  
-├── screens/ ⏳ (Folder created, needs implementation)
-├── utils/ ⏳ (Folder created, needs implementation)
+├── main.dart ✅ (Complete with full app integration and song management)
+├── models/ ✅ (Complete - song.dart, rectangle.dart)
+├── providers/ ✅ (Complete - all 6 providers implemented)
+├── services/ ✅ (Complete - song_storage_service.dart)
+├── utils/ ⏳ (Folder created, needs timestamp_tree.dart implementation)
 └── widgets/
-    ├── score_viewer/ ✅ (Complete - score_viewer.dart, page_controls.dart)
+    ├── mode_switcher.dart ✅ (Complete)
+    ├── song_menu.dart ✅ (Complete with New/Load/Delete)
+    ├── score_viewer/ ✅ (Complete - all components with rectangle overlay)
     └── video_player/ ✅ (Complete - youtube_player.dart, video_controls.dart)
 ```
 
@@ -208,10 +218,11 @@ lib/
 - ✅ App runs smoothly on both iOS and Android in landscape mode
 - ✅ PDFs load and navigate quickly (Syncfusion PDF viewer implemented)
 - ✅ YouTube videos play without stuttering (YouTube player implemented)
-- ⏳ Sync points accurately link score positions to video timestamps (not implemented)
-- ✅ Mode switching is instant and preserves state (basic implementation)
-- ⏳ Rectangle drawing and selection feels responsive (not implemented)
+- ⏳ Sync points accurately link score positions to video timestamps (data structures ready)
+- ✅ Mode switching is instant and preserves state (full Provider implementation)
+- ✅ Rectangle drawing and selection feels responsive (complete implementation)
 - ⏳ Playback synchronization is accurate within 100ms (not implemented)
-- ✅ All user interactions have appropriate feedback (implemented for PDF and video)
+- ✅ All user interactions have appropriate feedback (comprehensive implementation)
+- ✅ Data persistence across app sessions (complete song management system)
 
-**Overall Progress**: **Phases 1-3 Complete** (3/12 phases) - Core viewing and playback functionality fully implemented.
+**Overall Progress**: **Phases 1-5 Complete** (5/12 phases) - Core functionality, state management, rectangle drawing, and data persistence fully implemented.

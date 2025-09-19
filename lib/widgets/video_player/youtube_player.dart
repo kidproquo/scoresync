@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:provider/provider.dart';
 import 'dart:developer' as developer;
 import 'video_controls.dart';
+import '../../providers/song_provider.dart';
 
 class YouTubePlayerWidget extends StatefulWidget {
   const YouTubePlayerWidget({super.key});
@@ -246,37 +248,77 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            color: Colors.black,
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
-                  )
-                : _buildPlayer(),
+    return Consumer<SongProvider>(
+      builder: (context, songProvider, _) {
+        final hasSong = songProvider.currentSong != null;
+        
+        if (!hasSong) {
+          return _buildNoSongPlaceholder();
+        }
+        
+        return Column(
+          children: [
+            Expanded(
+              child: Container(
+                color: Colors.black,
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      )
+                    : _buildPlayer(),
+              ),
+            ),
+            VideoControls(
+              isPlaying: _isPlaying,
+              isPlayerReady: _isPlayerReady,
+              currentPosition: _currentPosition,
+              totalDuration: _totalDuration,
+              playbackRate: _playbackRate,
+              currentUrl: _currentUrl,
+              onLoadVideo: _loadVideo,
+              onPlayPause: _onPlayPause,
+              onStop: _onStop,
+              onSeek: _onSeek,
+              onSkipBackward: _onSkipBackward,
+              onSkipForward: _onSkipForward,
+              onPlaybackRateChanged: _onPlaybackRateChanged,
+              formatDuration: _formatDuration,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNoSongPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.video_library,
+            size: 64,
+            color: Colors.grey[400],
           ),
-        ),
-        VideoControls(
-          isPlaying: _isPlaying,
-          isPlayerReady: _isPlayerReady,
-          currentPosition: _currentPosition,
-          totalDuration: _totalDuration,
-          playbackRate: _playbackRate,
-          currentUrl: _currentUrl,
-          onLoadVideo: _loadVideo,
-          onPlayPause: _onPlayPause,
-          onStop: _onStop,
-          onSeek: _onSeek,
-          onSkipBackward: _onSkipBackward,
-          onSkipForward: _onSkipForward,
-          onPlaybackRateChanged: _onPlaybackRateChanged,
-          formatDuration: _formatDuration,
-        ),
-      ],
+          const SizedBox(height: 16),
+          Text(
+            'No Video Player',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create or load a song to access video features',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[500],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

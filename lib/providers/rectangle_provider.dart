@@ -9,6 +9,7 @@ class RectangleProvider extends ChangeNotifier {
   DrawingMode _drawingMode = DrawingMode.none;
   Offset? _startPoint;
   RectangleHandle? _activeHandle;
+  String? _activeRectangleId; // Rectangle currently active during playback
   
   // Callback for when rectangles are modified
   VoidCallback? _onRectanglesChanged;
@@ -17,9 +18,32 @@ class RectangleProvider extends ChangeNotifier {
   DrawnRectangle? get selectedRectangle => _selectedRectangle;
   DrawnRectangle? get currentDrawing => _currentDrawing;
   DrawingMode get drawingMode => _drawingMode;
+  String? get activeRectangleId => _activeRectangleId;
 
   List<DrawnRectangle> getRectanglesForPage(int pageNumber) {
     return _rectanglesByPage[pageNumber] ?? [];
+  }
+
+  // Get all rectangles across all pages
+  List<DrawnRectangle> get allRectangles {
+    final allRects = <DrawnRectangle>[];
+    for (final rects in _rectanglesByPage.values) {
+      allRects.addAll(rects);
+    }
+    return allRects;
+  }
+
+  // Set the active rectangle for playback highlighting
+  void setActiveRectangle(String? rectangleId) {
+    if (_activeRectangleId != rectangleId) {
+      _activeRectangleId = rectangleId;
+      notifyListeners();
+    }
+  }
+
+  // Check if a rectangle is active
+  bool isRectangleActive(String rectangleId) {
+    return _activeRectangleId == rectangleId;
   }
 
   // Set callback for when rectangles change

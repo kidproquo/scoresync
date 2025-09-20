@@ -91,6 +91,12 @@ class ScoreProvider extends ChangeNotifier {
     }
   }
 
+  void goToPage(int pageNumber) {
+    if (pageNumber >= 1 && pageNumber <= _totalPages) {
+      setCurrentPage(pageNumber);
+    }
+  }
+
   bool canGoToPreviousPage() {
     return _currentPageNumber > 1;
   }

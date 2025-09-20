@@ -7,6 +7,7 @@ class RectanglePainter extends CustomPainter {
   final Size pdfPageSize;
   final Size widgetSize;
   final bool isDesignMode;
+  final String? activeRectangleId;
 
   RectanglePainter({
     required this.rectangles,
@@ -14,6 +15,7 @@ class RectanglePainter extends CustomPainter {
     required this.pdfPageSize,
     required this.widgetSize,
     required this.isDesignMode,
+    this.activeRectangleId,
   });
 
   @override
@@ -43,19 +45,31 @@ class RectanglePainter extends CustomPainter {
   }
 
   void _drawRectangle(Canvas canvas, DrawnRectangle rectangle) {
+    final isActive = activeRectangleId == rectangle.id;
+    
     final paint = Paint()
       ..color = rectangle.isSelected 
           ? rectangle.color.withAlpha(255)
-          : rectangle.color.withAlpha(180)
+          : isActive
+              ? Colors.yellow.withAlpha(255)  // Highlight active rectangles in yellow
+              : rectangle.color.withAlpha(180)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = rectangle.strokeWidth;
+      ..strokeWidth = isActive 
+          ? rectangle.strokeWidth * 2  // Thicker border for active
+          : rectangle.strokeWidth;
 
     canvas.drawRect(rectangle.rect, paint);
 
-    // Draw fill for selected rectangles
+    // Draw fill for selected or active rectangles
     if (rectangle.isSelected) {
       final fillPaint = Paint()
         ..color = rectangle.color.withAlpha(30)
+        ..style = PaintingStyle.fill;
+      canvas.drawRect(rectangle.rect, fillPaint);
+    } else if (isActive && !isDesignMode) {
+      // Highlight active rectangle during playback
+      final fillPaint = Paint()
+        ..color = Colors.yellow.withAlpha(50)
         ..style = PaintingStyle.fill;
       canvas.drawRect(rectangle.rect, fillPaint);
     }
@@ -65,13 +79,15 @@ class RectanglePainter extends CustomPainter {
       _drawHandles(canvas, rectangle);
     }
 
-    // Draw timestamp badges inside selected rectangles
-    if (rectangle.isSelected && rectangle.hasTimestamps) {
-      _drawTimestampBadges(canvas, rectangle);
+    // Draw timestamp badges inside selected rectangles OR in playback mode for rectangles with timestamps
+    if ((rectangle.isSelected && isDesignMode) || (!isDesignMode && rectangle.hasTimestamps)) {
+      if (rectangle.hasTimestamps) {
+        _drawTimestampBadges(canvas, rectangle);
+      }
     }
 
-    // Draw timestamp indicator if rectangle has timestamps (when not selected)
-    if (!rectangle.isSelected && rectangle.hasTimestamps) {
+    // Draw timestamp indicator if rectangle has timestamps (when not selected in design mode)
+    if (!rectangle.isSelected && rectangle.hasTimestamps && isDesignMode) {
       _drawTimestampIndicator(canvas, rectangle);
     }
   }

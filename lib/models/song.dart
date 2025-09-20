@@ -2,14 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'rectangle.dart';
-import '../providers/sync_provider.dart';
 
 class Song {
   final String name;
   final String? pdfPath;
   final List<DrawnRectangle> rectangles;
   final String? videoUrl;
-  final List<SyncPoint> syncPoints;
   final DateTime createdAt;
   final DateTime lastModified;
 
@@ -18,11 +16,9 @@ class Song {
     this.pdfPath,
     List<DrawnRectangle>? rectangles,
     this.videoUrl,
-    List<SyncPoint>? syncPoints,
     DateTime? createdAt,
     DateTime? lastModified,
   })  : rectangles = rectangles ?? [],
-        syncPoints = syncPoints ?? [],
         createdAt = createdAt ?? DateTime.now(),
         lastModified = lastModified ?? DateTime.now();
 
@@ -31,7 +27,6 @@ class Song {
     String? pdfPath,
     List<DrawnRectangle>? rectangles,
     String? videoUrl,
-    List<SyncPoint>? syncPoints,
     DateTime? createdAt,
     DateTime? lastModified,
   }) {
@@ -40,7 +35,6 @@ class Song {
       pdfPath: pdfPath ?? this.pdfPath,
       rectangles: rectangles ?? List.from(this.rectangles),
       videoUrl: videoUrl ?? this.videoUrl,
-      syncPoints: syncPoints ?? List.from(this.syncPoints),
       createdAt: createdAt ?? this.createdAt,
       lastModified: lastModified ?? DateTime.now(),
     );
@@ -70,19 +64,16 @@ class Song {
     return rectangles.where((rect) => rect.pageNumber == pageNumber).toList();
   }
 
-  // Get all sync points sorted by timestamp
-  List<SyncPoint> get sortedSyncPoints {
-    final sorted = List<SyncPoint>.from(syncPoints);
-    sorted.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    return sorted;
+  // Get all rectangles with sync points (timestamps)
+  List<DrawnRectangle> get syncedRectangles {
+    return rectangles.where((rect) => rect.hasTimestamps).toList();
   }
 
   // Check if song has any content
   bool get hasContent {
     return pdfPath != null || 
            rectangles.isNotEmpty || 
-           videoUrl != null || 
-           syncPoints.isNotEmpty;
+           videoUrl != null;
   }
 
   // Serialize to JSON
@@ -92,7 +83,6 @@ class Song {
       'pdfPath': pdfPath,
       'rectangles': rectangles.map((r) => r.toJson()).toList(),
       'videoUrl': videoUrl,
-      'syncPoints': syncPoints.map((s) => s.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'lastModified': lastModified.toIso8601String(),
     };
@@ -107,9 +97,6 @@ class Song {
           ?.map((r) => DrawnRectangle.fromJson(r as Map<String, dynamic>))
           .toList() ?? [],
       videoUrl: json['videoUrl'] as String?,
-      syncPoints: (json['syncPoints'] as List<dynamic>?)
-          ?.map((s) => SyncPoint.fromJson(s as Map<String, dynamic>))
-          .toList() ?? [],
       createdAt: DateTime.parse(json['createdAt'] as String),
       lastModified: DateTime.parse(json['lastModified'] as String),
     );
@@ -128,7 +115,7 @@ class Song {
   @override
   String toString() {
     return 'Song(name: $name, pdfPath: $pdfPath, rectangles: ${rectangles.length}, '
-           'videoUrl: $videoUrl, syncPoints: ${syncPoints.length})';
+           'videoUrl: $videoUrl, syncedRects: ${syncedRectangles.length})';
   }
 
   @override

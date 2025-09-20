@@ -16,13 +16,13 @@ class SongProvider extends ChangeNotifier {
   Song? _currentSong;
   List<Song> _songs = [];
   bool _isLoading = false;
+  bool _isInitialized = false; // Track if initialization is completely done
   String? _errorMessage;
   
   // Provider references for updating other providers
   ScoreProvider? _scoreProvider;
   VideoProvider? _videoProvider;
   RectangleProvider? _rectangleProvider;
-  SyncProvider? _syncProvider;
   
   // Debouncing timer for rectangle updates
   Timer? _rectangleUpdateTimer;
@@ -30,6 +30,7 @@ class SongProvider extends ChangeNotifier {
   Song? get currentSong => _currentSong;
   List<Song> get songs => List.unmodifiable(_songs);
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
   String? get errorMessage => _errorMessage;
   bool get hasSongs => _songs.isNotEmpty;
   String? get currentSongName => _currentSong?.name;
@@ -45,7 +46,6 @@ class SongProvider extends ChangeNotifier {
     _scoreProvider = scoreProvider;
     _videoProvider = videoProvider;
     _rectangleProvider = rectangleProvider;
-    _syncProvider = syncProvider;
     
     // Set up auto-save callbacks
     _rectangleProvider?.setOnRectanglesChanged(_onRectanglesChanged);
@@ -97,10 +97,10 @@ class SongProvider extends ChangeNotifier {
       await SongStorageService.instance.initialize();
       
       developer.log('Loading songs...');
-      await loadSongs();
+      await _loadSongsInternal(); // Use internal method to avoid extra notifyListeners
       
       developer.log('Loading current song...');
-      await loadCurrentSong();
+      await _loadCurrentSongInternal(); // Use internal method to avoid extra notifyListeners
       
       developer.log('SongProvider initialization complete - currentSong: ${_currentSong?.name}, songsCount: ${_songs.length}');
     } catch (e) {
@@ -108,16 +108,22 @@ class SongProvider extends ChangeNotifier {
       developer.log('SongProvider initialization error: $e');
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _isInitialized = true;
+      notifyListeners(); // Single notification at the end
     }
   }
 
   // Load all songs from storage
   Future<void> loadSongs() async {
+    await _loadSongsInternal();
+    notifyListeners();
+  }
+
+  // Internal method without notifyListeners
+  Future<void> _loadSongsInternal() async {
     try {
       _songs = await SongStorageService.instance.loadSongs();
       developer.log('Loaded ${_songs.length} songs');
-      notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to load songs: $e';
       developer.log('Error loading songs: $e');
@@ -126,6 +132,12 @@ class SongProvider extends ChangeNotifier {
 
   // Load current song from storage
   Future<void> loadCurrentSong() async {
+    await _loadCurrentSongInternal();
+    notifyListeners();
+  }
+
+  // Internal method without notifyListeners
+  Future<void> _loadCurrentSongInternal() async {
     try {
       final currentSongName = SongStorageService.instance.getCurrentSongName();
       developer.log('Current song name from storage: $currentSongName');
@@ -141,7 +153,6 @@ class SongProvider extends ChangeNotifier {
       } else {
         developer.log('No current song name in storage');
       }
-      notifyListeners();
     } catch (e) {
       developer.log('Error loading current song: $e');
     }
@@ -164,7 +175,6 @@ class SongProvider extends ChangeNotifier {
 
       await _saveSong(song);
       await _setCurrentSong(song);
-      await _clearAllProviders();
       await _loadSongDataIntoProviders(song);
 
       developer.log('Created new song: $name');
@@ -206,8 +216,6 @@ class SongProvider extends ChangeNotifier {
       developer.log('Found song: ${song.name}, PDF: ${song.pdfPath}, Rectangles: ${song.rectangles.length}, VideoURL: ${song.videoUrl}');
       
       // Clear all providers first to ensure clean state
-      await _clearAllProviders();
-      
       await _setCurrentSong(song);
       await _loadSongDataIntoProviders(song);
       developer.log('Loaded song: $songName');
@@ -289,21 +297,6 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
-  // Update current song's sync points
-  Future<void> updateSongSyncPoints(List<SyncPoint> syncPoints) async {
-    if (_currentSong == null) return;
-
-    try {
-      final updatedSong = _currentSong!.copyWith(syncPoints: syncPoints);
-      await _saveSong(updatedSong);
-      _currentSong = updatedSong;
-      
-      notifyListeners();
-    } catch (e) {
-      developer.log('Error updating sync points: $e');
-    }
-  }
-
   // Private helper to save song (reloads all songs)
   Future<void> _saveSong(Song song) async {
     await SongStorageService.instance.saveSong(song);
@@ -358,7 +351,9 @@ class SongProvider extends ChangeNotifier {
   Future<void> _loadSongDataIntoProviders(Song song) async {
     try {
       developer.log('Loading song data into providers: ${song.name}');
-      developer.log('Provider status - Score: ${_scoreProvider != null}, Rectangle: ${_rectangleProvider != null}, Video: ${_videoProvider != null}, Sync: ${_syncProvider != null}');
+      
+      // Clear all providers first to avoid intermediate states
+      _clearAllProviders();
       
       // Load PDF into ScoreProvider
       if (song.pdfPath != null && _scoreProvider != null) {
@@ -422,14 +417,8 @@ class SongProvider extends ChangeNotifier {
       }
 
       // Load sync points into SyncProvider
-      if (_syncProvider != null) {
-        developer.log('SyncProvider before loading: ${_syncProvider.hashCode}');
-        developer.log('Loading ${song.syncPoints.length} sync points');
-        _syncProvider!.loadSyncPoints(song.syncPoints);
-        developer.log('Sync points successfully loaded into SyncProvider');
-      } else {
-        developer.log('SyncProvider is null');
-      }
+      // Sync points are now handled automatically through rectangles with timestamps
+      // The SyncProvider rebuilds its tree when rectangles are loaded
     } catch (e) {
       developer.log('Error loading song data into providers: $e');
     }
@@ -455,10 +444,7 @@ class SongProvider extends ChangeNotifier {
         developer.log('VideoProvider cleared');
       }
       
-      if (_syncProvider != null) {
-        _syncProvider!.clearAllSyncPoints();
-        developer.log('SyncProvider cleared');
-      }
+      // SyncProvider will automatically rebuild when rectangles are cleared
       
       developer.log('All providers cleared successfully');
     } catch (e) {

@@ -25,10 +25,26 @@ class _ScoreViewerState extends State<ScoreViewer> {
   void initState() {
     super.initState();
     _pdfViewerController = PdfViewerController();
+    
+    // Listen to score provider for page changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final scoreProvider = context.read<ScoreProvider>();
+      scoreProvider.addListener(_onScoreProviderChanged);
+    });
+  }
+  
+  void _onScoreProviderChanged() {
+    final scoreProvider = context.read<ScoreProvider>();
+    if (_pdfViewerController != null && 
+        scoreProvider.currentPageNumber != _pdfViewerController!.pageNumber) {
+      _pdfViewerController!.jumpToPage(scoreProvider.currentPageNumber);
+    }
   }
 
   @override
   void dispose() {
+    final scoreProvider = context.read<ScoreProvider>();
+    scoreProvider.removeListener(_onScoreProviderChanged);
     _pdfViewerController?.dispose();
     super.dispose();
   }
@@ -147,19 +163,16 @@ class _ScoreViewerState extends State<ScoreViewer> {
       pageLayoutMode: PdfPageLayoutMode.single, // Show one page at a time
     );
 
-    // In design mode, wrap with rectangle overlay
-    if (isDesignMode) {
-      return InteractiveRectangleOverlay(
-        currentPageNumber: scoreProvider.currentPageNumber,
-        pdfPageSize: _pdfPageSize,
-        child: IgnorePointer(
-          child: pdfViewer, // Ignore PDF gestures in design mode
-        ),
-      );
-    }
-
-    // In playback mode, just show the PDF viewer
-    return pdfViewer;
+    // Always wrap with rectangle overlay to show rectangles in both modes
+    return InteractiveRectangleOverlay(
+      currentPageNumber: scoreProvider.currentPageNumber,
+      pdfPageSize: _pdfPageSize,
+      child: isDesignMode 
+          ? IgnorePointer(
+              child: pdfViewer, // Ignore PDF gestures in design mode
+            )
+          : pdfViewer, // Allow PDF gestures in playback mode
+    );
   }
 
   Widget _buildNoPdfSelected() {

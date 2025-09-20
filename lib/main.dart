@@ -85,6 +85,17 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
       );
       await songProvider.initialize();
       
+      // Set up sync provider dependencies
+      if (mounted) {
+        final syncProvider = context.read<SyncProvider>();
+        syncProvider.setDependencies(
+          context.read<RectangleProvider>(),
+          context.read<VideoProvider>(),
+          context.read<ScoreProvider>(),
+          context.read<AppModeProvider>(),
+        );
+      }
+      
       // Check for welcome dialog after initialization is truly complete
       if (mounted && songProvider.songs.isEmpty) {
         developer.log('Post-initialization: No songs found, showing welcome dialog');
@@ -99,15 +110,22 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
   Widget build(BuildContext context) {
     return Consumer<SongProvider>(
       builder: (context, songProvider, _) {
-        if (songProvider.isLoading) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
+        // Show loading screen until initialization is complete AND we know if there's a current song
+        if (songProvider.isLoading || !songProvider.isInitialized) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            body: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading Score Sync...'),
+                ],
+              ),
             ),
           );
         }
-
-        // Dialog logic moved to initState after proper initialization
 
         return const MainScreen();
       },

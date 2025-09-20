@@ -1,204 +1,170 @@
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
+import '../utils/timestamp_tree.dart';
+import 'rectangle_provider.dart';
+import 'video_provider.dart';
+import 'score_provider.dart';
+import 'app_mode_provider.dart';
 
-class SyncPoint {
-  final String id;
-  final int pageNumber;
-  final Rect rectangle;
-  final Duration timestamp;
-  final DateTime createdAt;
-
-  SyncPoint({
-    required this.id,
-    required this.pageNumber,
-    required this.rectangle,
-    required this.timestamp,
-    required this.createdAt,
-  });
-
-  SyncPoint copyWith({
-    String? id,
-    int? pageNumber,
-    Rect? rectangle,
-    Duration? timestamp,
-    DateTime? createdAt,
-  }) {
-    return SyncPoint(
-      id: id ?? this.id,
-      pageNumber: pageNumber ?? this.pageNumber,
-      rectangle: rectangle ?? this.rectangle,
-      timestamp: timestamp ?? this.timestamp,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'pageNumber': pageNumber,
-      'rectangle': {
-        'left': rectangle.left,
-        'top': rectangle.top,
-        'right': rectangle.right,
-        'bottom': rectangle.bottom,
-      },
-      'timestamp': timestamp.inMilliseconds,
-      'createdAt': createdAt.toIso8601String(),
-    };
-  }
-
-  factory SyncPoint.fromJson(Map<String, dynamic> json) {
-    final rectJson = json['rectangle'] as Map<String, dynamic>;
-    return SyncPoint(
-      id: json['id'] as String,
-      pageNumber: json['pageNumber'] as int,
-      rectangle: Rect.fromLTRB(
-        rectJson['left'] as double,
-        rectJson['top'] as double,
-        rectJson['right'] as double,
-        rectJson['bottom'] as double,
-      ),
-      timestamp: Duration(milliseconds: json['timestamp'] as int),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-    );
-  }
-}
-
+/// Provider for managing sync points and playback synchronization
 class SyncProvider extends ChangeNotifier {
-  final List<SyncPoint> _syncPoints = [];
-  SyncPoint? _selectedSyncPoint;
+  final TimestampTree _timestampTree = TimestampTree();
   SyncPoint? _activeSyncPoint;
+  
+  // Dependencies
+  RectangleProvider? _rectangleProvider;
+  VideoProvider? _videoProvider;
+  ScoreProvider? _scoreProvider;
+  AppModeProvider? _appModeProvider;
 
-  List<SyncPoint> get syncPoints => List.unmodifiable(_syncPoints);
-  SyncPoint? get selectedSyncPoint => _selectedSyncPoint;
   SyncPoint? get activeSyncPoint => _activeSyncPoint;
-  int get syncPointCount => _syncPoints.length;
-  bool get hasSyncPoints => _syncPoints.isNotEmpty;
+  List<SyncPoint> get allSyncPoints => _timestampTree.getAllInOrder();
+  bool get hasSyncPoints => !_timestampTree.isEmpty;
 
-  List<SyncPoint> getSyncPointsForPage(int pageNumber) {
-    return _syncPoints.where((point) => point.pageNumber == pageNumber).toList();
+  void setDependencies(
+    RectangleProvider rectangleProvider,
+    VideoProvider videoProvider,
+    ScoreProvider scoreProvider,
+    AppModeProvider appModeProvider,
+  ) {
+    _rectangleProvider = rectangleProvider;
+    _videoProvider = videoProvider;
+    _scoreProvider = scoreProvider;
+    _appModeProvider = appModeProvider;
+    
+    // Listen to video position changes
+    _videoProvider!.addListener(_onVideoPositionChanged);
+    
+    // Rebuild sync points when rectangles change
+    _rectangleProvider!.addListener(_rebuildSyncPoints);
+    
+    // Listen to app mode changes
+    _appModeProvider!.addListener(_onAppModeChanged);
+    
+    _rebuildSyncPoints();
   }
 
-  void addSyncPoint(SyncPoint syncPoint) {
-    _syncPoints.add(syncPoint);
-    _syncPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  @override
+  void dispose() {
+    _videoProvider?.removeListener(_onVideoPositionChanged);
+    _rectangleProvider?.removeListener(_rebuildSyncPoints);
+    _appModeProvider?.removeListener(_onAppModeChanged);
+    super.dispose();
+  }
+
+  /// Rebuild sync points from all rectangles with timestamps
+  void _rebuildSyncPoints() {
+    // Only rebuild if rectangles actually changed, not just active rectangle
+    if (_rectangleProvider == null) {
+      developer.log('Sync: Cannot rebuild - RectangleProvider is null');
+      return;
+    }
     
-    developer.log('Added sync point at ${_formatDuration(syncPoint.timestamp)} on page ${syncPoint.pageNumber}');
+    final allRectangles = _rectangleProvider!.allRectangles;
+    
+    // Check if we need to rebuild (compare rectangle count and timestamps)
+    final currentSyncCount = _timestampTree.size;
+    int expectedSyncCount = 0;
+    for (final rectangle in allRectangles) {
+      expectedSyncCount += rectangle.timestamps.length;
+    }
+    
+    // Only rebuild if the number of sync points has changed
+    if (currentSyncCount == expectedSyncCount) {
+      developer.log('Sync: Skipping rebuild - sync count unchanged ($currentSyncCount)');
+      return;
+    }
+    
+    _timestampTree.clear();
+    developer.log('Sync: Found ${allRectangles.length} total rectangles');
+    
+    int syncPointCount = 0;
+    for (final rectangle in allRectangles) {
+      developer.log('Sync: Rectangle ${rectangle.id} has ${rectangle.timestamps.length} timestamps');
+      for (final timestamp in rectangle.timestamps) {
+        final syncPoint = SyncPoint(
+          timestamp: timestamp,
+          rectangle: rectangle,
+          pageNumber: rectangle.pageNumber,
+        );
+        _timestampTree.insert(syncPoint);
+        syncPointCount++;
+      }
+    }
+    
+    developer.log('Rebuilt sync tree with $syncPointCount sync points from ${allRectangles.length} rectangles');
     notifyListeners();
   }
 
-  void removeSyncPoint(String id) {
-    final index = _syncPoints.indexWhere((point) => point.id == id);
-    if (index != -1) {
-      final removedPoint = _syncPoints.removeAt(index);
-      
-      if (_selectedSyncPoint?.id == id) {
-        _selectedSyncPoint = null;
-      }
-      if (_activeSyncPoint?.id == id) {
-        _activeSyncPoint = null;
-      }
-      
-      developer.log('Removed sync point at ${_formatDuration(removedPoint.timestamp)}');
-      notifyListeners();
+  /// Called when video position changes
+  void _onVideoPositionChanged() {
+    // Only track in playback mode
+    if (_appModeProvider == null || _appModeProvider!.isDesignMode) {
+      return;
     }
-  }
-
-  void updateSyncPoint(String id, {
-    int? pageNumber,
-    Rect? rectangle,
-    Duration? timestamp,
-  }) {
-    final index = _syncPoints.indexWhere((point) => point.id == id);
-    if (index != -1) {
-      final oldPoint = _syncPoints[index];
-      final updatedPoint = oldPoint.copyWith(
-        pageNumber: pageNumber,
-        rectangle: rectangle,
-        timestamp: timestamp,
-      );
-      
-      _syncPoints[index] = updatedPoint;
-      _syncPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      
-      if (_selectedSyncPoint?.id == id) {
-        _selectedSyncPoint = updatedPoint;
-      }
-      if (_activeSyncPoint?.id == id) {
-        _activeSyncPoint = updatedPoint;
-      }
-      
-      developer.log('Updated sync point $id');
-      notifyListeners();
+    if (_videoProvider == null) {
+      return;
     }
-  }
-
-  void selectSyncPoint(String? id) {
-    if (id == null) {
-      _selectedSyncPoint = null;
-    } else {
-      _selectedSyncPoint = _syncPoints.firstWhere(
-        (point) => point.id == id,
-        orElse: () => _selectedSyncPoint!,
-      );
-    }
-    developer.log('Selected sync point: ${_selectedSyncPoint?.id ?? 'none'}');
-    notifyListeners();
-  }
-
-  void setActiveSyncPoint(Duration currentPosition) {
-    SyncPoint? newActivePoint;
     
-    for (final point in _syncPoints) {
-      if (point.timestamp <= currentPosition) {
-        newActivePoint = point;
-      } else {
-        break;
-      }
-    }
+    final currentPosition = _videoProvider!.currentPosition;
+    
+    // Don't require video to be playing - track position changes even when paused
+    
+    final newActivePoint = _timestampTree.findActiveAt(currentPosition);
     
     if (_activeSyncPoint != newActivePoint) {
       _activeSyncPoint = newActivePoint;
+      
       if (newActivePoint != null) {
-        developer.log('Active sync point: page ${newActivePoint.pageNumber} at ${_formatDuration(newActivePoint.timestamp)}');
-      }
-      notifyListeners();
-    }
-  }
-
-  void clearActiveSyncPoint() {
-    if (_activeSyncPoint != null) {
-      _activeSyncPoint = null;
-      notifyListeners();
-    }
-  }
-
-  void clearAllSyncPoints() {
-    _syncPoints.clear();
-    _selectedSyncPoint = null;
-    _activeSyncPoint = null;
-    developer.log('Cleared all sync points');
-    notifyListeners();
-  }
-
-  void loadSyncPoints(List<SyncPoint> syncPoints) {
-    clearAllSyncPoints();
-    _syncPoints.addAll(syncPoints);
-    _syncPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    developer.log('Loaded ${syncPoints.length} sync points');
-    notifyListeners();
-  }
-
-  SyncPoint? findSyncPointAt(int pageNumber, Offset position, {double tolerance = 10.0}) {
-    final pagePoints = getSyncPointsForPage(pageNumber);
-    
-    for (final point in pagePoints) {
-      if (point.rectangle.contains(position)) {
-        return point;
+        developer.log('🎯 Active sync: page ${newActivePoint.pageNumber} at ${_formatDuration(newActivePoint.timestamp)} (video at ${_formatDuration(currentPosition)})');
+        
+        // Notify rectangle provider to highlight the active rectangle
+        _rectangleProvider!.setActiveRectangle(newActivePoint.rectangle.id);
+        
+        // Check if we need to change pages
+        if (_scoreProvider != null && _scoreProvider!.currentPageNumber != newActivePoint.pageNumber) {
+          developer.log('📄 Auto-turning to page ${newActivePoint.pageNumber}');
+          _scoreProvider!.goToPage(newActivePoint.pageNumber);
+        }
+      } else {
+        developer.log('❌ No active sync point at position ${_formatDuration(currentPosition)}');
+        // Clear active rectangle
+        _rectangleProvider!.setActiveRectangle(null);
       }
       
-      final expandedRect = point.rectangle.inflate(tolerance);
-      if (expandedRect.contains(position)) {
+      notifyListeners();
+    }
+  }
+  
+  /// Called when app mode changes
+  void _onAppModeChanged() {
+    // Clear active sync point when switching to design mode
+    if (_appModeProvider!.isDesignMode && _activeSyncPoint != null) {
+      _activeSyncPoint = null;
+      _rectangleProvider?.setActiveRectangle(null);
+      notifyListeners();
+    }
+  }
+
+  /// Get all sync points for a specific page
+  List<SyncPoint> getSyncPointsForPage(int pageNumber) {
+    return allSyncPoints.where((point) => point.pageNumber == pageNumber).toList();
+  }
+
+  /// Get sync points in a time range
+  List<SyncPoint> getSyncPointsInRange(Duration start, Duration end) {
+    return _timestampTree.findInRange(start, end);
+  }
+
+  /// Find the next sync point after current position
+  SyncPoint? getNextSyncPoint() {
+    if (_videoProvider == null) return null;
+    
+    final currentPosition = _videoProvider!.currentPosition;
+    final allPoints = allSyncPoints;
+    
+    for (final point in allPoints) {
+      if (point.timestamp > currentPosition) {
         return point;
       }
     }
@@ -206,10 +172,20 @@ class SyncProvider extends ChangeNotifier {
     return null;
   }
 
-  List<SyncPoint> getSyncPointsInTimeRange(Duration start, Duration end) {
-    return _syncPoints.where((point) {
-      return point.timestamp >= start && point.timestamp <= end;
-    }).toList();
+  /// Find the previous sync point before current position
+  SyncPoint? getPreviousSyncPoint() {
+    if (_videoProvider == null) return null;
+    
+    final currentPosition = _videoProvider!.currentPosition;
+    final allPoints = allSyncPoints.reversed;
+    
+    for (final point in allPoints) {
+      if (point.timestamp < currentPosition) {
+        return point;
+      }
+    }
+    
+    return null;
   }
 
   String _formatDuration(Duration duration) {

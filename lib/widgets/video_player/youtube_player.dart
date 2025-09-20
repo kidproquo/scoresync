@@ -25,10 +25,17 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   String? _errorMessage;
   bool _isLoading = false;
   Timer? _loadingTimeout;
+  Timer? _positionTimer;
 
   @override
   void dispose() {
     _loadingTimeout?.cancel();
+    _positionTimer?.cancel();
+    
+    // Clear the seek callback first to prevent future calls
+    final videoProvider = context.read<VideoProvider>();
+    videoProvider.setSeekToCallback(null);
+    
     if (_controller != null) {
       try {
         _controller!.removeListener(_onPlayerStateChanged);
@@ -71,6 +78,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
       // Properly dispose of existing controller before creating new one
       if (_controller != null) {
+        // Clear the seek callback to prevent calls to disposed controller
+        final videoProvider = context.read<VideoProvider>();
+        videoProvider.setSeekToCallback(null);
+        
         try {
           _controller!.removeListener(_onPlayerStateChanged);
           _controller!.dispose();
@@ -152,6 +163,12 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _clearVideo() {
     _loadingTimeout?.cancel();
+    _stopPositionTracking();
+    
+    // Clear the seek callback first
+    final videoProvider = context.read<VideoProvider>();
+    videoProvider.setSeekToCallback(null);
+    
     if (_controller != null) {
       try {
         _controller!.removeListener(_onPlayerStateChanged);
@@ -175,6 +192,41 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
     developer.log('Video player cleared');
   }
+  
+  void _startPositionTracking() {
+    // Only use timer as a fallback for smoother updates
+    // The YouTube player listener should handle most updates
+    _positionTimer?.cancel();
+    _positionTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (_controller != null && mounted) {
+        try {
+          // Additional safety checks before accessing controller
+          if (_controller!.value.isPlaying) {
+            final newPosition = _controller!.value.position;
+            if (newPosition != _currentPosition) {
+              setState(() {
+                _currentPosition = newPosition;
+              });
+              
+              // Update video provider
+              final videoProvider = context.read<VideoProvider>();
+              videoProvider.setCurrentPosition(newPosition);
+              developer.log('Position updated: ${newPosition.inSeconds}s (from timer)');
+            }
+          }
+        } catch (e) {
+          developer.log('Error in position tracking timer: $e');
+        }
+      }
+    });
+    developer.log('Started supplemental position tracking (250ms)');
+  }
+  
+  void _stopPositionTracking() {
+    _positionTimer?.cancel();
+    _positionTimer = null;
+    developer.log('Stopped position tracking');
+  }
 
   void _onPlayerStateChanged() {
     if (_controller == null || !mounted) return;
@@ -182,6 +234,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     try {
       final wasReady = _isPlayerReady;
       final isNowReady = _controller!.value.isReady;
+      final oldPosition = _currentPosition;
       
       setState(() {
         _isPlayerReady = isNowReady;
@@ -189,6 +242,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         _currentPosition = _controller!.value.position;
         _totalDuration = _controller!.metadata.duration;
       });
+
+      // Log position updates for debugging
+      if (oldPosition != _currentPosition) {
+        developer.log('Position updated: ${_currentPosition.inSeconds}s (from listener)');
+      }
 
       // Update VideoProvider with current state
       final videoProvider = context.read<VideoProvider>();
@@ -199,6 +257,13 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       
       if (!wasReady && isNowReady) {
         developer.log('YouTube player ready - controls enabled');
+      }
+      
+      // Start or stop position tracking based on playing state
+      if (_isPlaying && _positionTimer == null) {
+        _startPositionTracking();
+      } else if (!_isPlaying && _positionTimer != null) {
+        _stopPositionTracking();
       }
     } catch (e) {
       developer.log('Error in player state change: $e');
@@ -234,7 +299,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     if (_controller == null || !_isPlayerReady || !mounted) return;
     
     try {
-      _controller!.seekTo(position);
+      // Additional check to ensure controller is not disposed
+      if (_controller!.value.isReady) {
+        _controller!.seekTo(position);
+      }
     } catch (e) {
       developer.log('Error in seek: $e');
     }

@@ -51,7 +51,7 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     if (rectangle != null) {
       final handle = rectangle.getHandleAt(localPoint);
       
-      if (handle == RectangleHandle.delete) {
+      if (handle == RectangleHandle.delete && isDesignMode) {
         rectangleProvider.selectRectangle(rectangle);
         rectangleProvider.deleteSelectedRectangle();
         return;
@@ -59,8 +59,8 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
         // Handle sync button click
         _handleSyncButtonTap(rectangle);
         return;
-      } else if (rectangle.isSelected && rectangle.hasTimestamps) {
-        // Check if clicking on a timestamp badge
+      } else if (rectangle.hasTimestamps) {
+        // Check if clicking on a timestamp badge (in both design and playback mode)
         final tappedTimestamp = _getTimestampAtPoint(rectangle, localPoint);
         if (tappedTimestamp != null) {
           _handleTimestampBadgeTap(tappedTimestamp);
@@ -211,6 +211,7 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
       builder: (context, rectangleProvider, appModeProvider, _) {
         final isDesignMode = appModeProvider.isDesignMode;
         final rectangles = rectangleProvider.getRectanglesForPage(widget.currentPageNumber);
+        
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -222,9 +223,7 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
                   : SystemMouseCursors.basic,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTapDown: isDesignMode
-                    ? (details) => _handleTapDown(details, rectangleProvider, isDesignMode)
-                    : null,
+                onTapDown: (details) => _handleTapDown(details, rectangleProvider, isDesignMode),
                 onPanUpdate: isDesignMode
                     ? (details) => _handlePanUpdate(details, rectangleProvider)
                     : null,
@@ -242,6 +241,7 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
                         pdfPageSize: widget.pdfPageSize,
                         widgetSize: _widgetSize!,
                         isDesignMode: isDesignMode,
+                        activeRectangleId: rectangleProvider.activeRectangleId,
                       ),
                     ),
                   ),

@@ -139,9 +139,16 @@ class _VideoControlsState extends State<VideoControls> {
   }
 
   Widget _buildPlaybackControls() {
+    final isPlaybackMode = !widget.isDesignMode;
+    final iconColor = isPlaybackMode ? Colors.white : null;
+    final textColor = isPlaybackMode ? Colors.white : null;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.symmetric(
+        horizontal: isPlaybackMode ? 12 : 16,
+        vertical: isPlaybackMode ? 8 : 12,
+      ),
+      decoration: isPlaybackMode ? null : BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(
@@ -154,93 +161,164 @@ class _VideoControlsState extends State<VideoControls> {
         children: [
           Row(
             children: [
-              // Add Change URL button (only in design mode)
-              if (widget.isDesignMode) ...[
+              // Control buttons with dynamic sizing
+              if (!isPlaybackMode && widget.isDesignMode) ...[
                 IconButton(
                   onPressed: () {
                     setState(() {
                       _isEditingUrl = !_isEditingUrl;
                     });
                   },
-                  icon: Icon(_isEditingUrl ? Icons.close : Icons.edit),
+                  icon: Icon(_isEditingUrl ? Icons.close : Icons.edit, color: iconColor),
                   tooltip: _isEditingUrl ? 'Cancel URL edit' : 'Change video URL',
                 ),
                 const SizedBox(width: 8),
               ],
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onSkipBackward : null,
-                icon: const Icon(Icons.replay_10),
-                tooltip: widget.isPlayerReady ? '10 seconds backward' : 'Loading video...',
+                icon: Icon(Icons.replay_10, color: iconColor, size: isPlaybackMode ? 20 : null),
+                tooltip: '10 seconds backward',
+                padding: isPlaybackMode ? const EdgeInsets.all(4) : null,
+                constraints: isPlaybackMode ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
               ),
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onPlayPause : null,
                 icon: widget.isPlayerReady 
-                    ? Icon(widget.isPlaying ? Icons.pause : Icons.play_arrow)
-                    : const SizedBox(
+                    ? Icon(
+                        widget.isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: iconColor,
+                        size: isPlaybackMode ? 24 : null,
+                      )
+                    : SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: iconColor ?? Theme.of(context).colorScheme.primary,
+                        ),
                       ),
-                tooltip: widget.isPlayerReady 
-                    ? (widget.isPlaying ? 'Pause' : 'Play')
-                    : 'Loading video...',
+                tooltip: widget.isPlaying ? 'Pause' : 'Play',
+                padding: isPlaybackMode ? const EdgeInsets.all(4) : null,
+                constraints: isPlaybackMode ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
               ),
-              IconButton(
-                onPressed: widget.isPlayerReady ? widget.onStop : null,
-                icon: const Icon(Icons.stop),
-                tooltip: widget.isPlayerReady ? 'Stop' : 'Loading video...',
-              ),
+              if (!isPlaybackMode)
+                IconButton(
+                  onPressed: widget.isPlayerReady ? widget.onStop : null,
+                  icon: Icon(Icons.stop, color: iconColor),
+                  tooltip: 'Stop',
+                ),
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onSkipForward : null,
-                icon: const Icon(Icons.forward_10),
-                tooltip: widget.isPlayerReady ? '10 seconds forward' : 'Loading video...',
-              ),
-              const SizedBox(width: 16),
-              Text(
-                widget.formatDuration(widget.currentPosition),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+                icon: Icon(Icons.forward_10, color: iconColor, size: isPlaybackMode ? 20 : null),
+                tooltip: '10 seconds forward',
+                padding: isPlaybackMode ? const EdgeInsets.all(4) : null,
+                constraints: isPlaybackMode ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
               ),
               const SizedBox(width: 8),
-              const Text('/'),
-              const SizedBox(width: 8),
-              Text(
-                widget.formatDuration(widget.totalDuration),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const Spacer(),
-              widget.isPlayerReady
-                  ? DropdownButton<double>(
-                      value: widget.playbackRate,
-                      onChanged: (double? value) {
-                        if (value != null) widget.onPlaybackRateChanged(value);
-                      },
-                      items: const [
-                        DropdownMenuItem(value: 0.5, child: Text('0.5x')),
-                        DropdownMenuItem(value: 1.0, child: Text('1.0x')),
-                        DropdownMenuItem(value: 1.25, child: Text('1.25x')),
-                        DropdownMenuItem(value: 1.5, child: Text('1.5x')),
-                        DropdownMenuItem(value: 2.0, child: Text('2.0x')),
-                      ],
-                      underline: Container(),
-                      isDense: true,
-                    )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: const Text(
-                        'Loading...',
-                        style: TextStyle(color: Colors.grey),
+              if (!isPlaybackMode) const SizedBox(width: 16),
+              isPlaybackMode
+                  ? Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.formatDuration(widget.currentPosition),
+                            style: TextStyle(color: textColor, fontSize: 12),
+                          ),
+                          Text(' / ', style: TextStyle(color: textColor?.withValues(alpha: 0.7), fontSize: 12)),
+                          Text(
+                            widget.formatDuration(widget.totalDuration),
+                            style: TextStyle(color: textColor?.withValues(alpha: 0.7), fontSize: 12),
+                          ),
+                        ],
                       ),
+                    )
+                  : Row(
+                      children: [
+                        Text(
+                          widget.formatDuration(widget.currentPosition),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: textColor,
+                              ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('/'),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.formatDuration(widget.totalDuration),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor),
+                        ),
+                      ],
                     ),
+              if (!isPlaybackMode) const Spacer(),
+              if (isPlaybackMode && widget.isDesignMode)
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isEditingUrl = !_isEditingUrl;
+                    });
+                  },
+                  icon: Icon(
+                    _isEditingUrl ? Icons.close : Icons.edit,
+                    color: iconColor,
+                    size: 18,
+                  ),
+                  tooltip: _isEditingUrl ? 'Cancel' : 'Change URL',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              if (widget.isPlayerReady)
+                isPlaybackMode
+                    ? PopupMenuButton<double>(
+                        icon: Icon(Icons.speed, color: iconColor, size: 18),
+                        tooltip: 'Playback speed',
+                        onSelected: widget.onPlaybackRateChanged,
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 0.5, child: Text('0.5x')),
+                          const PopupMenuItem(value: 1.0, child: Text('1.0x')),
+                          const PopupMenuItem(value: 1.25, child: Text('1.25x')),
+                          const PopupMenuItem(value: 1.5, child: Text('1.5x')),
+                          const PopupMenuItem(value: 2.0, child: Text('2.0x')),
+                        ],
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      )
+                    : DropdownButton<double>(
+                        value: widget.playbackRate,
+                        onChanged: (double? value) {
+                          if (value != null) widget.onPlaybackRateChanged(value);
+                        },
+                        items: const [
+                          DropdownMenuItem(value: 0.5, child: Text('0.5x')),
+                          DropdownMenuItem(value: 1.0, child: Text('1.0x')),
+                          DropdownMenuItem(value: 1.25, child: Text('1.25x')),
+                          DropdownMenuItem(value: 1.5, child: Text('1.5x')),
+                          DropdownMenuItem(value: 2.0, child: Text('2.0x')),
+                        ],
+                        underline: Container(),
+                        isDense: true,
+                      )
+              else if (!isPlaybackMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: const Text(
+                    'Loading...',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              trackHeight: 4,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              trackHeight: isPlaybackMode ? 3 : 4,
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: isPlaybackMode ? 6 : 8),
+              overlayShape: RoundSliderOverlayShape(overlayRadius: isPlaybackMode ? 12 : 16),
+              activeTrackColor: isPlaybackMode ? Colors.white : Theme.of(context).colorScheme.primary,
+              inactiveTrackColor: isPlaybackMode ? Colors.white30 : Theme.of(context).colorScheme.outline,
+              thumbColor: isPlaybackMode ? Colors.white : Theme.of(context).colorScheme.primary,
+              overlayColor: isPlaybackMode ? Colors.white24 : Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
             ),
             child: Slider(
               value: widget.totalDuration.inMilliseconds > 0
@@ -252,8 +330,6 @@ class _VideoControlsState extends State<VideoControls> {
                       widget.onSeek(Duration(milliseconds: value.round()));
                     }
                   : null,
-              activeColor: Theme.of(context).colorScheme.primary,
-              inactiveColor: Theme.of(context).colorScheme.outline,
             ),
           ),
         ],

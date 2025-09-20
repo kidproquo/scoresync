@@ -253,3 +253,10 @@ lib/
   - Updated PageControls to hide "Select PDF" button in playback mode
   - Added conditional UI rendering based on `isDesignMode` state
   - Ensured consistent behavior across all PDF and video interaction points
+- **Fixed fullscreen playback mode interaction issues**:
+  - Resolved video controls overflow issue by implementing overlay controls for playback mode
+  - Made video controls mode-aware: column layout for design mode, overlay for playback mode
+  - Fixed floating app bar blocking sync point interactions by reverting to simpler implementation
+  - Resolved tap detection causing video player resets by removing complex split-layer approach
+  - Implemented proper tap overlay system that only appears when controls are hidden
+  - Restored proper control interaction while maintaining fullscreen tap-to-toggle functionality

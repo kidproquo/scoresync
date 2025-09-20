@@ -9,7 +9,12 @@ import '../../providers/video_provider.dart';
 import '../../providers/app_mode_provider.dart';
 
 class YouTubePlayerWidget extends StatefulWidget {
-  const YouTubePlayerWidget({super.key});
+  final bool showGuiControls;
+  
+  const YouTubePlayerWidget({
+    super.key,
+    this.showGuiControls = true,
+  });
 
   @override
   State<YouTubePlayerWidget> createState() => _YouTubePlayerWidgetState();
@@ -27,15 +32,23 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   bool _isLoading = false;
   Timer? _loadingTimeout;
   Timer? _positionTimer;
+  VideoProvider? _videoProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Safely get the video provider reference
+    _videoProvider ??= context.read<VideoProvider>();
+  }
 
   @override
   void dispose() {
     _loadingTimeout?.cancel();
     _positionTimer?.cancel();
     
-    // Clear the seek callback first to prevent future calls
-    final videoProvider = context.read<VideoProvider>();
-    videoProvider.setSeekToCallback(null);
+    // Clear the seek callback first to prevent future calls using stored reference
+    _videoProvider?.setSeekToCallback(null);
     
     if (_controller != null) {
       try {
@@ -80,8 +93,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       // Properly dispose of existing controller before creating new one
       if (_controller != null) {
         // Clear the seek callback to prevent calls to disposed controller
-        final videoProvider = context.read<VideoProvider>();
-        videoProvider.setSeekToCallback(null);
+        _videoProvider?.setSeekToCallback(null);
         
         try {
           _controller!.removeListener(_onPlayerStateChanged);
@@ -140,9 +152,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       _isLoading = false;
     });
 
-    // Set up VideoProvider callback for seeking
-    final videoProvider = context.read<VideoProvider>();
-    videoProvider.setSeekToCallback(_onSeek);
+    // Set up VideoProvider callback for seeking using stored reference
+    _videoProvider?.setSeekToCallback(_onSeek);
 
     // Set a timeout to handle cases where player never becomes ready
     _loadingTimeout = Timer(const Duration(seconds: 10), () {
@@ -167,8 +178,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     _stopPositionTracking();
     
     // Clear the seek callback first
-    final videoProvider = context.read<VideoProvider>();
-    videoProvider.setSeekToCallback(null);
+    _videoProvider?.setSeekToCallback(null);
     
     if (_controller != null) {
       try {
@@ -506,10 +516,47 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           return _buildNoSongPlaceholder();
         }
         
-        return Column(
-          children: [
-            Expanded(
-              child: Container(
+        // In design mode, use column layout; in playback mode, use overlay
+        if (appModeProvider.isDesignMode) {
+          return Column(
+            children: [
+              Expanded(
+                child: Container(
+                  color: Colors.black,
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        )
+                      : _buildPlayer(),
+                ),
+              ),
+              VideoControls(
+                isPlaying: _isPlaying,
+                isPlayerReady: _isPlayerReady,
+                currentPosition: _currentPosition,
+                totalDuration: _totalDuration,
+                playbackRate: _playbackRate,
+                currentUrl: _currentUrl,
+                isDesignMode: appModeProvider.isDesignMode,
+                onLoadVideo: _loadVideo,
+                onPlayPause: _onPlayPause,
+                onStop: _onStop,
+                onSeek: _onSeek,
+                onSkipBackward: _onSkipBackward,
+                onSkipForward: _onSkipForward,
+                onPlaybackRateChanged: _onPlaybackRateChanged,
+                formatDuration: _formatDuration,
+              ),
+            ],
+          );
+        } else {
+          // Playback mode - overlay controls
+          return Stack(
+            children: [
+              // Video player fills the entire container
+              Container(
                 color: Colors.black,
                 child: _isLoading
                     ? const Center(
@@ -519,26 +566,46 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                       )
                     : _buildPlayer(),
               ),
-            ),
-            VideoControls(
-              isPlaying: _isPlaying,
-              isPlayerReady: _isPlayerReady,
-              currentPosition: _currentPosition,
-              totalDuration: _totalDuration,
-              playbackRate: _playbackRate,
-              currentUrl: _currentUrl,
-              isDesignMode: appModeProvider.isDesignMode,
-              onLoadVideo: _loadVideo,
-              onPlayPause: _onPlayPause,
-              onStop: _onStop,
-              onSeek: _onSeek,
-              onSkipBackward: _onSkipBackward,
-              onSkipForward: _onSkipForward,
-              onPlaybackRateChanged: _onPlaybackRateChanged,
-              formatDuration: _formatDuration,
-            ),
-          ],
-        );
+              // Video controls overlay (only show if showGuiControls is true)
+              if (widget.showGuiControls)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.8),
+                          Colors.black.withValues(alpha: 0.6),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: VideoControls(
+                      isPlaying: _isPlaying,
+                      isPlayerReady: _isPlayerReady,
+                      currentPosition: _currentPosition,
+                      totalDuration: _totalDuration,
+                      playbackRate: _playbackRate,
+                      currentUrl: _currentUrl,
+                      isDesignMode: appModeProvider.isDesignMode,
+                      onLoadVideo: _loadVideo,
+                      onPlayPause: _onPlayPause,
+                      onStop: _onStop,
+                      onSeek: _onSeek,
+                      onSkipBackward: _onSkipBackward,
+                      onSkipForward: _onSkipForward,
+                      onPlaybackRateChanged: _onPlaybackRateChanged,
+                      formatDuration: _formatDuration,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }
       },
     );
   }

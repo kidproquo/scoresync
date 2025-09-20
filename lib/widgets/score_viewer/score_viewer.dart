@@ -11,7 +11,12 @@ import 'page_controls.dart';
 import 'rectangle_overlay.dart';
 
 class ScoreViewer extends StatefulWidget {
-  const ScoreViewer({super.key});
+  final bool showGuiControls;
+  
+  const ScoreViewer({
+    super.key,
+    this.showGuiControls = true,
+  });
 
   @override
   State<ScoreViewer> createState() => _ScoreViewerState();
@@ -20,31 +25,36 @@ class ScoreViewer extends StatefulWidget {
 class _ScoreViewerState extends State<ScoreViewer> {
   PdfViewerController? _pdfViewerController;
   Size _pdfPageSize = const Size(612, 792); // Default US Letter size
+  ScoreProvider? _scoreProvider;
 
   @override
   void initState() {
     super.initState();
     _pdfViewerController = PdfViewerController();
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     
-    // Listen to score provider for page changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final scoreProvider = context.read<ScoreProvider>();
-      scoreProvider.addListener(_onScoreProviderChanged);
-    });
+    // Safely get the score provider reference
+    if (_scoreProvider == null) {
+      _scoreProvider = context.read<ScoreProvider>();
+      _scoreProvider!.addListener(_onScoreProviderChanged);
+    }
   }
   
   void _onScoreProviderChanged() {
-    final scoreProvider = context.read<ScoreProvider>();
-    if (_pdfViewerController != null && 
-        scoreProvider.currentPageNumber != _pdfViewerController!.pageNumber) {
-      _pdfViewerController!.jumpToPage(scoreProvider.currentPageNumber);
+    if (_pdfViewerController != null && _scoreProvider != null &&
+        _scoreProvider!.currentPageNumber != _pdfViewerController!.pageNumber) {
+      _pdfViewerController!.jumpToPage(_scoreProvider!.currentPageNumber);
     }
   }
 
   @override
   void dispose() {
-    final scoreProvider = context.read<ScoreProvider>();
-    scoreProvider.removeListener(_onScoreProviderChanged);
+    // Safely remove listener using stored reference
+    _scoreProvider?.removeListener(_onScoreProviderChanged);
     _pdfViewerController?.dispose();
     super.dispose();
   }
@@ -264,12 +274,14 @@ class _ScoreViewerState extends State<ScoreViewer> {
       builder: (context, scoreProvider, appModeProvider, _) {
         return Column(
           children: [
-            if (scoreProvider.isLoading)
+            if (widget.showGuiControls && scoreProvider.isLoading)
               const LinearProgressIndicator(),
             Expanded(
               child: _buildPdfViewer(scoreProvider, appModeProvider.isDesignMode),
             ),
-            if (scoreProvider.selectedPdfFile != null && scoreProvider.totalPages > 0)
+            if (widget.showGuiControls && 
+                scoreProvider.selectedPdfFile != null && 
+                scoreProvider.totalPages > 0)
               Consumer<SongProvider>(
                 builder: (context, songProvider, _) => PageControls(
                   currentPage: scoreProvider.currentPageNumber,

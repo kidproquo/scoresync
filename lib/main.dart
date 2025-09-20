@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'dart:io';
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'widgets/score_viewer/score_viewer.dart';
 import 'widgets/video_player/youtube_player.dart';
@@ -413,48 +414,500 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
   }
 }
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  bool _showGuiControls = true;
+  Timer? _hideTimer;
+  bool _hasInitialized = false;
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  void _toggleGuiControls() {
+    setState(() {
+      _showGuiControls = !_showGuiControls;
+    });
+    
+    if (_showGuiControls) {
+      _startHideTimer();
+    }
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showGuiControls = false;
+        });
+      }
+    });
+  }
+
+  void _onTap() {
+    // Toggle GUI controls (only called from fullscreen playback mode)
+    _toggleGuiControls();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<SongProvider>(
-      builder: (context, songProvider, _) {
+    return Consumer2<SongProvider, AppModeProvider>(
+      builder: (context, songProvider, appModeProvider, _) {
         final songName = songProvider.currentSongName ?? 'Score Sync';
         final hasSong = songProvider.currentSong != null;
+        final isPlaybackMode = !appModeProvider.isDesignMode;
+        
+        // In playback mode, show GUI controls initially and start timer
+        if (isPlaybackMode && !_hasInitialized) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _hasInitialized = true;
+            });
+            _startHideTimer();
+          });
+        } else if (!isPlaybackMode) {
+          // Reset state when switching to design mode
+          _hasInitialized = false;
+          _hideTimer?.cancel();
+          _hideTimer = null;
+          if (!_showGuiControls) {
+            setState(() {
+              _showGuiControls = true;
+            });
+          }
+        }
         
         return Scaffold(
-          appBar: AppBar(
+          appBar: (!isPlaybackMode) ? AppBar(
             leading: const SongMenu(),
             title: Text(songName),
             actions: hasSong ? const [
               ModeSwitcher(),
             ] : null,
-          ),
-          body: hasSong ? Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      right: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: const ScoreViewer(),
-                ),
-              ),
-              Expanded(
-                flex: 1,
-                child: const YouTubePlayerWidget(),
-              ),
-            ],
-          ) : const NoSongPlaceholder(),
+          ) : null,
+          body: hasSong ? (isPlaybackMode
+              ? _buildFullscreenPlayback()
+              : _buildSplitScreenLayout()) : const NoSongPlaceholder(),
         );
       },
+    );
+  }
+
+  Widget _buildFullscreenPlayback() {
+    final songProvider = context.read<SongProvider>();
+    final songName = songProvider.currentSongName ?? 'Score Sync';
+    
+    return Stack(
+      children: [
+        // Fullscreen score viewer
+        Positioned.fill(
+          child: ScoreViewer(showGuiControls: _showGuiControls),
+        ),
+        // Tap overlay (only when controls are hidden)
+        if (!_showGuiControls)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _onTap,
+              behavior: HitTestBehavior.translucent,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+        // Video player overlay (always visible in fullscreen)
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          bottom: _showGuiControls ? 80 : 20, // Adjust position when page controls are visible
+          right: 20,
+          width: 320,
+          height: 240, // Fixed height since controls are now overlaid
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(8),
+              border: _showGuiControls ? null : Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: YouTubePlayerWidget(showGuiControls: _showGuiControls),
+            ),
+          ),
+        ),
+        // Floating app bar (shows/hides with tap)
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          top: _showGuiControls ? 0 : -100,
+          left: 0,
+          right: 0,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: _showGuiControls ? 1.0 : 0.0,
+            child: Container(
+              height: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.7),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      iconTheme: const IconThemeData(color: Colors.white),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildFloatingMenu(context),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            songName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Consumer<AppModeProvider>(
+                          builder: (context, appModeProvider, _) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    onTap: () => appModeProvider.setDesignMode(),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: appModeProvider.isDesignMode 
+                                            ? Colors.white 
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.edit,
+                                            size: 16,
+                                            color: appModeProvider.isDesignMode 
+                                                ? Colors.black87 
+                                                : Colors.white70,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Design',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: appModeProvider.isDesignMode 
+                                                  ? Colors.black87 
+                                                  : Colors.white70,
+                                              fontWeight: appModeProvider.isDesignMode 
+                                                  ? FontWeight.w600 
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  InkWell(
+                                    onTap: () => appModeProvider.setPlaybackMode(),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: appModeProvider.isPlaybackMode 
+                                            ? Colors.white 
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.play_arrow,
+                                            size: 16,
+                                            color: appModeProvider.isPlaybackMode 
+                                                ? Colors.black87 
+                                                : Colors.white70,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Playback',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: appModeProvider.isPlaybackMode 
+                                                  ? Colors.black87 
+                                                  : Colors.white70,
+                                              fontWeight: appModeProvider.isPlaybackMode 
+                                                  ? FontWeight.w600 
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFloatingMenu(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.menu, color: Colors.white),
+      onSelected: (String result) async {
+        switch (result) {
+          case 'new':
+            _showNewSongDialog(context);
+            break;
+          case 'load':
+            _showLoadSongDialog(context);
+            break;
+          case 'delete':
+            _showDeleteSongDialog(context);
+            break;
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'new',
+          child: ListTile(
+            leading: Icon(Icons.add),
+            title: Text('New Song'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'load',
+          child: ListTile(
+            leading: Icon(Icons.folder_open),
+            title: Text('Load Song'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'delete',
+          child: ListTile(
+            leading: Icon(Icons.delete, color: Colors.red),
+            title: Text('Delete Song', style: TextStyle(color: Colors.red)),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSplitScreenLayout() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: ScoreViewer(showGuiControls: _showGuiControls),
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: YouTubePlayerWidget(showGuiControls: _showGuiControls),
+        ),
+      ],
+    );
+  }
+
+  void _showLoadSongDialog(BuildContext context) async {
+    final songProvider = context.read<SongProvider>();
+    final songNames = songProvider.songNames;
+
+    if (songNames.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No songs available to load')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Load Song'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 200,
+          child: ListView.builder(
+            itemCount: songNames.length,
+            itemBuilder: (context, index) {
+              final songName = songNames[index];
+              final isCurrentSong = songProvider.currentSongName == songName;
+              
+              return ListTile(
+                title: Text(songName),
+                trailing: isCurrentSong 
+                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  if (!isCurrentSong) {
+                    songProvider.loadSong(songName);
+                  }
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNewSongDialog(BuildContext context) {
+    final controller = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Song'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Song Name',
+                hintText: 'Enter song name',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+              onSubmitted: (value) async {
+                if (value.trim().isNotEmpty) {
+                  Navigator.of(context).pop();
+                  final songProvider = context.read<SongProvider>();
+                  await songProvider.createNewSong(value.trim());
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.of(context).pop();
+                final songProvider = context.read<SongProvider>();
+                await songProvider.createNewSong(name);
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteSongDialog(BuildContext context) {
+    final songProvider = context.read<SongProvider>();
+    final currentSong = songProvider.currentSong;
+
+    if (currentSong == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No song selected to delete')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text('Are you sure you want to delete "${currentSong.name}"?\n\nThis action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final success = await songProvider.deleteSong(currentSong.name);
+              
+              if (success && context.mounted) {
+                if (songProvider.songs.isNotEmpty) {
+                  _showLoadSongDialog(context);
+                } else {
+                  _showNewSongDialog(context);
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -500,4 +953,3 @@ class NoSongPlaceholder extends StatelessWidget {
     );
   }
 }
-

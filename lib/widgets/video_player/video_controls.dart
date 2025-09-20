@@ -7,6 +7,7 @@ class VideoControls extends StatefulWidget {
   final Duration totalDuration;
   final double playbackRate;
   final String currentUrl;
+  final bool isDesignMode;
   final Function(String) onLoadVideo;
   final VoidCallback onPlayPause;
   final VoidCallback onStop;
@@ -24,6 +25,7 @@ class VideoControls extends StatefulWidget {
     required this.totalDuration,
     required this.playbackRate,
     required this.currentUrl,
+    required this.isDesignMode,
     required this.onLoadVideo,
     required this.onPlayPause,
     required this.onStop,
@@ -83,38 +85,53 @@ class _VideoControlsState extends State<VideoControls> {
           ),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.link, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _urlController,
-              decoration: const InputDecoration(
-                hintText: 'Enter YouTube URL...',
-                border: InputBorder.none,
-                isDense: true,
+          Row(
+            children: [
+              const Icon(Icons.edit, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Change YouTube URL',
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
-              onSubmitted: (_) => _loadVideoFromUrl(),
-            ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: _loadVideoFromUrl,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: const Text('Load'),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _isEditingUrl = !_isEditingUrl;
-              });
-            },
-            icon: Icon(_isEditingUrl ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
-            tooltip: _isEditingUrl ? 'Hide URL input' : 'Show URL input',
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.link, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _urlController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter YouTube URL...',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _loadVideoFromUrl(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _loadVideoFromUrl,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text('Load'),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isEditingUrl = false;
+                  });
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
           ),
         ],
       ),
@@ -137,6 +154,19 @@ class _VideoControlsState extends State<VideoControls> {
         children: [
           Row(
             children: [
+              // Add Change URL button (only in design mode)
+              if (widget.isDesignMode) ...[
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isEditingUrl = !_isEditingUrl;
+                    });
+                  },
+                  icon: Icon(_isEditingUrl ? Icons.close : Icons.edit),
+                  tooltip: _isEditingUrl ? 'Cancel URL edit' : 'Change video URL',
+                ),
+                const SizedBox(width: 8),
+              ],
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onSkipBackward : null,
                 icon: const Icon(Icons.replay_10),
@@ -231,11 +261,67 @@ class _VideoControlsState extends State<VideoControls> {
     );
   }
 
+  Widget _buildCurrentUrlDisplay() {
+    if (widget.currentUrl.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor,
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+            const SizedBox(width: 8),
+            const Text(
+              'No video loaded. Click edit to add a YouTube URL.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.video_library, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.currentUrl,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (_isEditingUrl || widget.currentUrl.isEmpty) _buildUrlInput(),
+        if (_isEditingUrl && widget.isDesignMode) 
+          _buildUrlInput()
+        else if (widget.isDesignMode)
+          _buildCurrentUrlDisplay(),
         _buildPlaybackControls(),
       ],
     );

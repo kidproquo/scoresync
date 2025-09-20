@@ -140,7 +140,7 @@ class _ScoreViewerState extends State<ScoreViewer> {
 
   Widget _buildPdfViewer(ScoreProvider scoreProvider, bool isDesignMode) {
     if (scoreProvider.selectedPdfFile == null) {
-      return _buildNoPdfSelected();
+      return _buildNoPdfSelected(isDesignMode);
     }
 
     if (scoreProvider.errorMessage != null) {
@@ -175,7 +175,7 @@ class _ScoreViewerState extends State<ScoreViewer> {
     );
   }
 
-  Widget _buildNoPdfSelected() {
+  Widget _buildNoPdfSelected(bool isDesignMode) {
     final songProvider = context.read<SongProvider>();
     final hasSong = songProvider.currentSong != null;
     
@@ -198,7 +198,9 @@ class _ScoreViewerState extends State<ScoreViewer> {
           const SizedBox(height: 8),
           Text(
             hasSong 
-                ? 'Tap the button below to select a PDF score'
+                ? (isDesignMode 
+                    ? 'Tap the button below to select a PDF score'
+                    : 'Switch to Design Mode to select a PDF score')
                 : 'Create or load a song first to select a PDF',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[500],
@@ -206,11 +208,12 @@ class _ScoreViewerState extends State<ScoreViewer> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: hasSong ? _pickPdfFile : null,
-            icon: const Icon(Icons.folder_open),
-            label: const Text('Select PDF'),
-          ),
+          if (isDesignMode)
+            ElevatedButton.icon(
+              onPressed: hasSong ? _pickPdfFile : null,
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Select PDF'),
+            ),
         ],
       ),
     );
@@ -277,6 +280,7 @@ class _ScoreViewerState extends State<ScoreViewer> {
                   onLastPage: _goToLastPage,
                   onSelectPdf: _pickPdfFile,
                   canSelectPdf: songProvider.currentSong != null,
+                  isDesignMode: appModeProvider.isDesignMode,
                 ),
               ),
           ],

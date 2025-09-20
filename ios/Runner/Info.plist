@@ -42,5 +42,33 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Document types and file sharing support -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>pdf</string>
+			</array>
+			<key>CFBundleTypeIconFiles</key>
+			<array/>
+			<key>CFBundleTypeName</key>
+			<string>PDF Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Support for opening PDFs -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	
 </dict>
 </plist>

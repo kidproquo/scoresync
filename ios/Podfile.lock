@@ -47,6 +47,8 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - receive_sharing_intent (1.8.1):
+    - Flutter
   - SDWebImage (5.21.2):
     - SDWebImage/Core (= 5.21.2)
   - SDWebImage/Core (5.21.2)
@@ -65,6 +67,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - receive_sharing_intent (from `.symlinks/plugins/receive_sharing_intent/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - syncfusion_flutter_pdfviewer (from `.symlinks/plugins/syncfusion_flutter_pdfviewer/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
@@ -88,6 +91,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  receive_sharing_intent:
+    :path: ".symlinks/plugins/receive_sharing_intent/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   syncfusion_flutter_pdfviewer:
@@ -104,6 +109,7 @@ SPEC CHECKSUMS:
   flutter_inappwebview_ios: 6f63631e2c62a7c350263b13fa5427aedefe81d4
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  receive_sharing_intent: 79c848f5b045674ad60b9fea3bafea59962ad2c1
   SDWebImage: 9f177d83116802728e122410fb25ad88f5c7608a
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4

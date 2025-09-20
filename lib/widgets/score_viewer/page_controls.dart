@@ -9,6 +9,7 @@ class PageControls extends StatelessWidget {
   final VoidCallback onLastPage;
   final VoidCallback? onSelectPdf;
   final bool canSelectPdf;
+  final bool isDesignMode;
 
   const PageControls({
     super.key,
@@ -20,6 +21,7 @@ class PageControls extends StatelessWidget {
     required this.onLastPage,
     this.onSelectPdf,
     this.canSelectPdf = true,
+    required this.isDesignMode,
   });
 
   @override
@@ -67,15 +69,17 @@ class PageControls extends StatelessWidget {
             icon: const Icon(Icons.last_page),
             tooltip: 'Last page',
           ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: canSelectPdf ? onSelectPdf : null,
-            icon: const Icon(Icons.folder_open, size: 18),
-            label: const Text('Select PDF'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          if (isDesignMode) ...[
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: canSelectPdf ? onSelectPdf : null,
+              icon: const Icon(Icons.folder_open, size: 18),
+              label: const Text('Select PDF'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

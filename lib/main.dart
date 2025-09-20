@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'dart:io';
 import 'dart:developer' as developer;
 import 'widgets/score_viewer/score_viewer.dart';
 import 'widgets/video_player/youtube_player.dart';
@@ -71,10 +73,32 @@ class ScoreSyncHome extends StatefulWidget {
 }
 
 class _ScoreSyncHomeState extends State<ScoreSyncHome> {
+  late Stream<List<SharedMediaFile>> _intentDataStreamFiles;
+  
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize sharing intent stream
+    _intentDataStreamFiles = ReceiveSharingIntent.instance.getMediaStream();
+    _intentDataStreamFiles.listen((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        _handleSharedFiles(value);
+      }
+    });
+
+    // Handle initial shared file when app is opened via sharing
+    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        _handleSharedFiles(value);
+      }
+    });
+    
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final songProvider = context.read<SongProvider>();
       songProvider.setProviders(
@@ -104,6 +128,182 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
         developer.log('Post-initialization: Songs exist (${songProvider.songs.length}), skipping welcome dialog');
       }
     });
+  }
+
+  void _handleSharedFiles(List<SharedMediaFile> files) {
+    // Filter for PDF files only
+    final pdfFiles = files.where((file) => 
+      file.path.toLowerCase().endsWith('.pdf')).toList();
+    
+    if (pdfFiles.isEmpty) {
+      developer.log('No PDF files found in shared files');
+      return;
+    }
+    
+    // Handle the first PDF file
+    final sharedPdf = pdfFiles.first;
+    developer.log('Handling shared PDF: ${sharedPdf.path}');
+    
+    // Wait for app initialization to complete before showing dialog
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _showSharedPdfDialog(File(sharedPdf.path));
+      }
+    });
+  }
+
+  void _showSharedPdfDialog(File pdfFile) {
+    final songProvider = context.read<SongProvider>();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Shared PDF'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('A PDF file has been shared with Score Sync:'),
+              const SizedBox(height: 8),
+              Text(
+                pdfFile.path.split('/').last,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text('What would you like to do?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Clear the shared intent
+                ReceiveSharingIntent.instance.reset();
+              },
+              child: const Text('Cancel'),
+            ),
+            if (songProvider.hasSongs) ...[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _showUpdateExistingSongDialog(pdfFile);
+                },
+                child: const Text('Update Existing Song'),
+              ),
+            ],
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _createNewSongFromSharedPdf(pdfFile);
+              },
+              child: const Text('Create New Song'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showUpdateExistingSongDialog(File pdfFile) {
+    final songProvider = context.read<SongProvider>();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Song to Update'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: songProvider.songs.length,
+              itemBuilder: (context, index) {
+                final song = songProvider.songs[index];
+                return ListTile(
+                  title: Text(song.name),
+                  subtitle: song.pdfPath != null 
+                      ? Text('Current PDF: ${song.pdfPath!.split('/').last}')
+                      : const Text('No PDF currently'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _updateExistingSongWithPdf(song.name, pdfFile);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Clear the shared intent
+                ReceiveSharingIntent.instance.reset();
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _createNewSongFromSharedPdf(File pdfFile) async {
+    try {
+      final songProvider = context.read<SongProvider>();
+      await songProvider.createSongFromPdf(pdfFile);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Created new song from ${pdfFile.path.split('/').last}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      // Clear the shared intent
+      ReceiveSharingIntent.instance.reset();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating song: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateExistingSongWithPdf(String songName, File pdfFile) async {
+    try {
+      final songProvider = context.read<SongProvider>();
+      await songProvider.loadSong(songName);
+      await songProvider.updateSongPdf(pdfFile);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Updated $songName with new PDF'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      // Clear the shared intent
+      ReceiveSharingIntent.instance.reset();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating song: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'video_controls.dart';
 import '../../providers/song_provider.dart';
 import '../../providers/video_provider.dart';
+import '../../providers/app_mode_provider.dart';
 
 class YouTubePlayerWidget extends StatefulWidget {
   const YouTubePlayerWidget({super.key});
@@ -479,8 +480,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<SongProvider, VideoProvider>(
-      builder: (context, songProvider, videoProvider, _) {
+    return Consumer3<SongProvider, VideoProvider, AppModeProvider>(
+      builder: (context, songProvider, videoProvider, appModeProvider, _) {
         final hasSong = songProvider.currentSong != null;
         
         // Check if we need to load a video URL from VideoProvider
@@ -526,6 +527,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
               totalDuration: _totalDuration,
               playbackRate: _playbackRate,
               currentUrl: _currentUrl,
+              isDesignMode: appModeProvider.isDesignMode,
               onLoadVideo: _loadVideo,
               onPlayPause: _onPlayPause,
               onStop: _onStop,

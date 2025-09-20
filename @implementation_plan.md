@@ -236,11 +236,20 @@ lib/
 **Overall Progress**: **Phases 1-8 Complete** (8/12 phases) - Core functionality, state management, rectangle drawing, data persistence, video handling, sync point creation, playback synchronization, and interactive playback fully implemented.
 
 ### 🔧 Recent Enhancements (Latest Session)
-- **Implemented complete playback synchronization**: Real-time video position tracking with 250ms fallback polling
-- **Added red-black tree for timestamp lookup**: O(log n) efficiency for finding active sync points during playback
-- **Created automatic rectangle highlighting**: Yellow highlighting for active rectangles during video playback
-- **Implemented page auto-turning**: Automatic page navigation when sync points span multiple pages
-- **Enhanced playback mode interaction**: Timestamp badges clickable in playback mode for video seeking
-- **Fixed YouTube controller disposal issues**: Proper lifecycle management to prevent disposed controller errors
-- **Optimized loading experience**: Reduced flashing screens with improved initialization state management
-- **Added comprehensive sync point display**: Timestamp badges visible in both design and playback modes
+- **Implemented PDF sharing capability**: Added ability to share PDFs with the app
+  - Added `receive_sharing_intent` dependency for handling shared files
+  - Configured Android intent filters for PDF sharing (ACTION_SEND, ACTION_VIEW)
+  - Added iOS document type registration for PDF files in Info.plist
+  - Created intelligent dialog system for choosing between updating existing song or creating new song
+  - Implemented error handling and user feedback via SnackBars
+- **Added YouTube URL editing feature**: Enhanced video controls with URL modification
+  - Added edit button to video controls (design mode only)
+  - Created URL input section with clear header and current URL display
+  - Implemented Load and Cancel buttons with proper state management
+  - Enhanced UX with visual feedback during URL changes
+- **Implemented design mode restrictions**: Restricted PDF selection and video URL editing to design mode only
+  - Updated ScoreViewer to show PDF selection only in design mode
+  - Modified VideoControls to show edit button only in design mode
+  - Updated PageControls to hide "Select PDF" button in playback mode
+  - Added conditional UI rendering based on `isDesignMode` state
+  - Ensured consistent behavior across all PDF and video interaction points

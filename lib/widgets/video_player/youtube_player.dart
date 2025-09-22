@@ -523,7 +523,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
               Expanded(
                 child: Container(
                   color: Colors.black,
-                  child: _isLoading
+                  child: _isLoading && _currentUrl.isNotEmpty
                       ? const Center(
                           child: CircularProgressIndicator(
                             color: Colors.white,
@@ -558,7 +558,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
               // Video player fills the entire container
               Container(
                 color: Colors.black,
-                child: _isLoading
+                child: _isLoading && _currentUrl.isNotEmpty
                     ? const Center(
                         child: CircularProgressIndicator(
                           color: Colors.white,

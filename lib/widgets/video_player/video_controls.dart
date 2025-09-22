@@ -183,7 +183,7 @@ class _VideoControlsState extends State<VideoControls> {
               ),
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onPlayPause : null,
-                icon: widget.isPlayerReady 
+                icon: widget.isPlayerReady || widget.currentUrl.isEmpty
                     ? Icon(
                         widget.isPlaying ? Icons.pause : Icons.play_arrow,
                         color: iconColor,
@@ -299,7 +299,7 @@ class _VideoControlsState extends State<VideoControls> {
                         underline: Container(),
                         isDense: true,
                       )
-              else if (!isPlaybackMode)
+              else if (!isPlaybackMode && widget.currentUrl.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: const Text(

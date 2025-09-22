@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/song_provider.dart';
 import '../services/song_storage_service.dart';
+import 'load_song_dialog.dart';
 
 class SongMenu extends StatelessWidget {
   const SongMenu({super.key});
@@ -72,9 +73,8 @@ class SongMenu extends StatelessWidget {
 
   Future<void> _showLoadSongDialog(BuildContext context) async {
     final songProvider = context.read<SongProvider>();
-    final songNames = songProvider.songNames;
 
-    if (songNames.isEmpty) {
+    if (songProvider.songs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No songs available to load')),
       );
@@ -83,39 +83,7 @@ class SongMenu extends StatelessWidget {
 
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Load Song'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 200, // Fixed height to prevent intrinsic dimension issues
-          child: ListView.builder(
-            itemCount: songNames.length,
-            itemBuilder: (context, index) {
-              final songName = songNames[index];
-              final isCurrentSong = songProvider.currentSongName == songName;
-              
-              return ListTile(
-                title: Text(songName),
-                trailing: isCurrentSong 
-                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                    : null,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  if (!isCurrentSong) {
-                    songProvider.loadSong(songName);
-                  }
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
+      builder: (context) => const LoadSongDialog(),
     );
   }
 

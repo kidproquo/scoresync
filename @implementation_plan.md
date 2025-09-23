@@ -315,3 +315,17 @@ lib/
   - Implemented AnimatedPositioned for smooth slide transitions of page controls
   - Preserved tap-to-toggle behavior while preventing content shifting during auto-hide
   - Maintained existing design mode layout unchanged for consistent editing experience
+- **Fixed sync point tapping behavior to always pause**:
+  - Added forcePause() method to VideoProvider with dedicated callback system
+  - Implemented force pause callback in YouTube player that always pauses regardless of current state
+  - Modified sync point tap handler to use forcePause() instead of regular pause()
+  - Added pause-first-then-seek logic with delayed second pause to ensure consistent behavior
+  - Eliminated toggle behavior - sync points now always seek and pause, never start playback
+- **Resolved rectangle scaling timing issues**:
+  - Added setState() in PDF document loaded callback to trigger widget rebuild when page size changes
+  - Fixed inconsistent rectangle positioning for landscape-oriented PDFs
+  - Eliminated race condition between PDF loading and rectangle overlay scaling calculations
+- **Fixed setState during build error**:
+  - Moved state changes in mode switching logic to addPostFrameCallback to prevent build-time setState
+  - Resolved crash when switching between design and playback modes
+  - Maintained proper state management while eliminating framework violations

@@ -138,6 +138,7 @@ class VideoProvider extends ChangeNotifier {
   Function(Duration)? _seekToCallback;
   Function()? _playCallback;
   Function()? _pauseCallback;
+  Function()? _forcePauseCallback;
 
   void setSeekToCallback(Function(Duration)? callback) {
     _seekToCallback = callback;
@@ -149,6 +150,10 @@ class VideoProvider extends ChangeNotifier {
 
   void setPauseCallback(Function()? callback) {
     _pauseCallback = callback;
+  }
+
+  void setForcePauseCallback(Function()? callback) {
+    _forcePauseCallback = callback;
   }
 
   void seekTo(Duration position) {
@@ -175,6 +180,15 @@ class VideoProvider extends ChangeNotifier {
       developer.log('Video pause requested');
     } else {
       developer.log('Cannot pause - no callback set or player not ready');
+    }
+  }
+
+  void forcePause() {
+    if (_forcePauseCallback != null && _isPlayerReady) {
+      _forcePauseCallback!();
+      developer.log('Video force pause requested');
+    } else {
+      developer.log('Cannot force pause - no callback set or player not ready');
     }
   }
 }

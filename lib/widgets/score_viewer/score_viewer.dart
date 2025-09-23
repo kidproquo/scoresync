@@ -100,10 +100,14 @@ class _ScoreViewerState extends State<ScoreViewer> {
       
       // Ensure we have valid, finite dimensions
       if (width.isFinite && height.isFinite && !width.isNaN && !height.isNaN && width > 0 && height > 0) {
-        _pdfPageSize = Size(width, height);
+        setState(() {
+          _pdfPageSize = Size(width, height);
+        });
       } else {
         // Fallback to default size if page dimensions are invalid
-        _pdfPageSize = const Size(612, 792); // US Letter default
+        setState(() {
+          _pdfPageSize = const Size(612, 792); // US Letter default
+        });
         developer.log('Warning: PDF page size is invalid, using default size');
       }
     }

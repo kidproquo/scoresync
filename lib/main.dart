@@ -544,14 +544,18 @@ class _MainScreenState extends State<MainScreen> {
           });
         } else if (!isPlaybackMode) {
           // Reset state when switching to design mode
-          _hasInitialized = false;
-          _hideTimer?.cancel();
-          _hideTimer = null;
-          if (!_showGuiControls) {
-            setState(() {
-              _showGuiControls = true;
-            });
-          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _hasInitialized = false;
+              _hideTimer?.cancel();
+              _hideTimer = null;
+              if (!_showGuiControls) {
+                setState(() {
+                  _showGuiControls = true;
+                });
+              }
+            }
+          });
         }
         
         return Scaffold(

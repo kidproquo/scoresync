@@ -151,10 +151,14 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     if (videoProvider.hasVideo) {
       developer.log('Timestamp badge tapped: seeking to ${_formatDuration(timestamp)}');
       
-      // Stop everything and seek to timestamp, then pause
+      // Stop everything, force pause first, then seek to timestamp
       metronomeProvider.stopMetronome();
+      videoProvider.forcePause();
       videoProvider.seekTo(timestamp);
-      videoProvider.pause();
+      // Force pause again after seek to ensure it stays paused
+      Future.delayed(const Duration(milliseconds: 100), () {
+        videoProvider.forcePause();
+      });
       
       developer.log('Video paused at ${_formatDuration(timestamp)} - press play to start with metronome');
     }

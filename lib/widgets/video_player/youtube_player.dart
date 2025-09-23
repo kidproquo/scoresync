@@ -54,6 +54,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     _videoProvider?.setSeekToCallback(null);
     _videoProvider?.setPlayCallback(null);
     _videoProvider?.setPauseCallback(null);
+    _videoProvider?.setForcePauseCallback(null);
     
     if (_controller != null) {
       try {
@@ -101,6 +102,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         _videoProvider?.setSeekToCallback(null);
         _videoProvider?.setPlayCallback(null);
         _videoProvider?.setPauseCallback(null);
+        _videoProvider?.setForcePauseCallback(null);
         
         try {
           _controller!.removeListener(_onPlayerStateChanged);
@@ -169,6 +171,15 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     _videoProvider?.setPauseCallback(() {
       if (_isPlaying) _onPlayPause();
     });
+    _videoProvider?.setForcePauseCallback(() {
+      // Always pause regardless of current state
+      if (_controller != null && _isPlayerReady) {
+        _controller!.pause();
+        final metronomeProvider = context.read<MetronomeProvider>();
+        metronomeProvider.stopMetronome();
+        developer.log('Force pause executed - video should be paused');
+      }
+    });
 
     // Set a timeout to handle cases where player never becomes ready
     _loadingTimeout = Timer(const Duration(seconds: 10), () {
@@ -196,6 +207,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     _videoProvider?.setSeekToCallback(null);
     _videoProvider?.setPlayCallback(null);
     _videoProvider?.setPauseCallback(null);
+    _videoProvider?.setForcePauseCallback(null);
     
     if (_controller != null) {
       try {

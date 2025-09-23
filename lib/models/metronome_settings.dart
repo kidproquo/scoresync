@@ -92,11 +92,15 @@ class TimeSignatures {
   static const threeFour = TimeSignature(3, 4);
   static const fourFour = TimeSignature(4, 4);
   static const sixEight = TimeSignature(6, 8);
+  static const nineEight = TimeSignature(9, 8);
+  static const twelveEight = TimeSignature(12, 8);
   
   static const List<TimeSignature> common = [
     twoFour,
     threeFour,
     fourFour,
     sixEight,
+    nineEight,
+    twelveEight,
   ];
 }

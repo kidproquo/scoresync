@@ -9,6 +9,7 @@ class MetronomeProvider extends ChangeNotifier {
   Timer? _metronomeTimer;
   int _currentBeat = 0;
   bool _isCountingIn = false;
+  double _playbackRate = 1.0; // Add playback rate
   
   // Callbacks
   Function(int beat)? _onBeat;
@@ -89,16 +90,29 @@ class MetronomeProvider extends ChangeNotifier {
     updateSettings(_settings.copyWith(countInEnabled: enabled));
   }
 
+  void setPlaybackRate(double rate) {
+    if (_playbackRate != rate) {
+      _playbackRate = rate;
+      // If metronome is playing, restart with new rate
+      if (isPlaying) {
+        developer.log('Playback rate changed to $rate, restarting metronome');
+        startMetronome();
+      }
+    }
+  }
+
   void startMetronome() {
     if (!_settings.isEnabled) return;
     
     stopMetronome(); // Ensure clean start
     
+    // Apply playback rate to BPM
+    final effectiveBPM = (_settings.bpm * _playbackRate).round();
     final beatDuration = Duration(
-      milliseconds: (60000 / _settings.bpm).round(),
+      milliseconds: (60000 / effectiveBPM).round(),
     );
     
-    developer.log('Starting metronome: BPM=${_settings.bpm}, beatDuration=${beatDuration.inMilliseconds}ms, timeSignature=${_settings.timeSignature.displayString}');
+    developer.log('Starting metronome: BPM=${_settings.bpm}, playbackRate=$_playbackRate, effectiveBPM=$effectiveBPM, beatDuration=${beatDuration.inMilliseconds}ms, timeSignature=${_settings.timeSignature.displayString}');
     
     _currentBeat = 1; // Start with beat 1
     _playClick(true); // Play first beat (accent) immediately
@@ -120,7 +134,7 @@ class MetronomeProvider extends ChangeNotifier {
       notifyListeners();
     });
     
-    developer.log('Metronome started at ${_settings.bpm} BPM');
+    developer.log('Metronome started at $effectiveBPM effective BPM (base: ${_settings.bpm} BPM × $_playbackRate rate)');
   }
 
   void stopMetronome() {
@@ -142,8 +156,10 @@ class MetronomeProvider extends ChangeNotifier {
     _currentBeat = 0;
     notifyListeners();
 
+    // Apply playback rate to count-in as well
+    final effectiveBPM = (_settings.bpm * _playbackRate).round();
     final beatDuration = Duration(
-      milliseconds: (60000 / _settings.bpm).round(),
+      milliseconds: (60000 / effectiveBPM).round(),
     );
 
     for (int beat = 1; beat <= _settings.timeSignature.numerator; beat++) {
@@ -161,7 +177,7 @@ class MetronomeProvider extends ChangeNotifier {
     _currentBeat = 0;
     notifyListeners();
     
-    developer.log('Count-in completed');
+    developer.log('Count-in completed at $effectiveBPM effective BPM');
   }
 
   void _playClick(bool isAccent) {

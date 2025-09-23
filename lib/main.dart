@@ -603,7 +603,7 @@ class _MainScreenState extends State<MainScreen> {
           bottom: 80,
           right: 20,
           width: 320,
-          height: 240, // Fixed height since controls are now overlaid
+          height: 180, // 16:9 aspect ratio (320/16*9=180)
           child: Container(
             decoration: BoxDecoration(
               color: Colors.black,

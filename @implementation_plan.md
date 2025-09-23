@@ -329,3 +329,15 @@ lib/
   - Moved state changes in mode switching logic to addPostFrameCallback to prevent build-time setState
   - Resolved crash when switching between design and playback modes
   - Maintained proper state management while eliminating framework violations
+- **Enhanced video overlay in playback mode**:
+  - Fixed video overlay aspect ratio from 4:3 to 16:9 (320x180) to eliminate black bars
+  - Added compact video controls to overlay including play/pause, progress slider, timestamps
+  - Implemented playback speed control with improved granularity: 0.5x, 0.6x, 0.7x, 0.8x, 0.9x, 1.0x, 1.2x
+  - Used dropdown-style speed selector showing current selection (consistent with design mode)
+  - Optimized controls for small overlay size with compact layout and smaller fonts
+- **Implemented playback rate synchronization with metronome**:
+  - Added playback rate tracking to MetronomeProvider with automatic tempo adjustment
+  - Metronome BPM now scales with video playback rate (e.g., 0.5x speed = half BPM)
+  - Updated count-in timing to match effective BPM for synchronized video start
+  - Metronome automatically restarts with new tempo when playback rate changes
+  - Enhanced logging to show both base BPM and effective BPM for debugging

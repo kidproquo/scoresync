@@ -355,8 +355,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       final metronomeProvider = context.read<MetronomeProvider>();
       
       if (metronomeProvider.settings.isEnabled) {
+        // Set playback rate before starting metronome
+        metronomeProvider.setPlaybackRate(_playbackRate);
+        
         // Start metronome first
-        developer.log('Starting metronome');
+        developer.log('Starting metronome with playback rate: $_playbackRate');
         metronomeProvider.startMetronome();
         
         if (metronomeProvider.settings.countInEnabled) {
@@ -365,11 +368,12 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
             _showCountIn = true;
           });
           
-          // Wait for 1 measure before starting video
+          // Wait for 1 measure before starting video (using effective BPM)
+          final effectiveBPM = (metronomeProvider.settings.bpm * _playbackRate).round();
           final measureDuration = Duration(
-            milliseconds: (60000 / metronomeProvider.settings.bpm * metronomeProvider.settings.timeSignature.numerator).round(),
+            milliseconds: (60000 / effectiveBPM * metronomeProvider.settings.timeSignature.numerator).round(),
           );
-          developer.log('Count-in enabled: waiting ${measureDuration.inMilliseconds}ms before starting video');
+          developer.log('Count-in enabled: waiting ${measureDuration.inMilliseconds}ms before starting video (effective BPM: $effectiveBPM)');
           
           Future.delayed(measureDuration, () {
             if (mounted && _controller != null && _isPlayerReady) {
@@ -452,6 +456,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         setState(() {
           _playbackRate = rate;
         });
+        
+        // Update metronome playback rate
+        final metronomeProvider = context.read<MetronomeProvider>();
+        metronomeProvider.setPlaybackRate(rate);
+        developer.log('Updated metronome playback rate to: ${rate}x');
       }
       developer.log('Playback rate changed to: ${rate}x');
     } catch (e) {
@@ -641,7 +650,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
             ],
           );
         } else {
-          // Playback mode - overlay controls
+          // Playback mode - show video with minimal overlay controls
           return Stack(
             children: [
               // Video player fills the entire container
@@ -667,40 +676,120 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                     },
                   ),
                 ),
-              // Video controls overlay (only show if showGuiControls is true)
-              if (widget.showGuiControls)
+              // Minimal controls overlay (always visible in overlay mode)
+              if (widget.showGuiControls && _isPlayerReady)
                 Positioned(
                   left: 0,
                   right: 0,
                   bottom: 0,
                   child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                         colors: [
                           Colors.black.withValues(alpha: 0.8),
-                          Colors.black.withValues(alpha: 0.6),
                           Colors.transparent,
                         ],
                       ),
                     ),
-                    child: VideoControls(
-                      isPlaying: _isPlaying,
-                      isPlayerReady: _isPlayerReady,
-                      currentPosition: _currentPosition,
-                      totalDuration: _totalDuration,
-                      playbackRate: _playbackRate,
-                      currentUrl: _currentUrl,
-                      isDesignMode: appModeProvider.isDesignMode,
-                      onLoadVideo: _loadVideo,
-                      onPlayPause: _onPlayPause,
-                      onStop: _onStop,
-                      onSeek: _onSeek,
-                      onSkipBackward: _onSkipBackward,
-                      onSkipForward: _onSkipForward,
-                      onPlaybackRateChanged: _onPlaybackRateChanged,
-                      formatDuration: _formatDuration,
+                    child: Row(
+                      children: [
+                        // Play/pause button
+                        IconButton(
+                          icon: Icon(
+                            _isPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: _onPlayPause,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                        // Current time
+                        Text(
+                          _formatDuration(_currentPosition),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
+                        ),
+                        // Progress bar
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: SizedBox(
+                              height: 20,
+                              child: SliderTheme(
+                                data: SliderThemeData(
+                                  trackHeight: 2,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12,
+                                  ),
+                                  activeTrackColor: Theme.of(context).colorScheme.primary,
+                                  inactiveTrackColor: Colors.grey[600],
+                                  thumbColor: Theme.of(context).colorScheme.primary,
+                                  overlayColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                                ),
+                                child: Slider(
+                                  value: _totalDuration.inSeconds > 0
+                                      ? _currentPosition.inSeconds.toDouble()
+                                      : 0.0,
+                                  min: 0.0,
+                                  max: _totalDuration.inSeconds.toDouble(),
+                                  onChanged: (value) {
+                                    _onSeek(Duration(seconds: value.toInt()));
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Total time
+                        Text(
+                          _formatDuration(_totalDuration),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
+                        ),
+                        // Speed control - dropdown style showing current value
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: DropdownButton<double>(
+                            value: _playbackRate,
+                            onChanged: (double? value) {
+                              if (value != null) _onPlaybackRateChanged(value);
+                            },
+                            items: const [
+                              DropdownMenuItem(value: 0.5, child: Text('0.5x', style: TextStyle(fontSize: 11))),
+                              DropdownMenuItem(value: 0.6, child: Text('0.6x', style: TextStyle(fontSize: 11))),
+                              DropdownMenuItem(value: 0.7, child: Text('0.7x', style: TextStyle(fontSize: 11))),
+                              DropdownMenuItem(value: 0.8, child: Text('0.8x', style: TextStyle(fontSize: 11))),
+                              DropdownMenuItem(value: 0.9, child: Text('0.9x', style: TextStyle(fontSize: 11))),
+                              DropdownMenuItem(value: 1.0, child: Text('1.0x', style: TextStyle(fontSize: 11))),
+                              DropdownMenuItem(value: 1.2, child: Text('1.2x', style: TextStyle(fontSize: 11))),
+                            ],
+                            underline: Container(),
+                            isDense: true,
+                            icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                            dropdownColor: Colors.black87,
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

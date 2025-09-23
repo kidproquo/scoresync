@@ -95,13 +95,23 @@ class _ScoreViewerState extends State<ScoreViewer> {
     scoreProvider.setTotalPages(details.document.pages.count);
     scoreProvider.setCurrentPage(1);
     
-    // Get page size from first page
+    // Get page size from first page with safety checks
     if (details.document.pages.count > 0) {
       final page = details.document.pages[0];
-      _pdfPageSize = Size(page.size.width, page.size.height);
+      final width = page.size.width;
+      final height = page.size.height;
+      
+      // Ensure we have valid, finite dimensions
+      if (width.isFinite && height.isFinite && !width.isNaN && !height.isNaN && width > 0 && height > 0) {
+        _pdfPageSize = Size(width, height);
+      } else {
+        // Fallback to default size if page dimensions are invalid
+        _pdfPageSize = const Size(612, 792); // US Letter default
+        developer.log('Warning: PDF page size is invalid, using default size');
+      }
     }
     
-    developer.log('PDF loaded with ${scoreProvider.totalPages} pages');
+    developer.log('PDF loaded with ${scoreProvider.totalPages} pages, page size: $_pdfPageSize');
   }
 
   void _onPageChanged(PdfPageChangedDetails details) {
@@ -149,39 +159,63 @@ class _ScoreViewerState extends State<ScoreViewer> {
   }
 
   Widget _buildPdfViewer(ScoreProvider scoreProvider, bool isDesignMode) {
+    developer.log('_buildPdfViewer: hasFile=${scoreProvider.selectedPdfFile != null}, error=${scoreProvider.errorMessage}, isDesignMode=$isDesignMode');
+    
     if (scoreProvider.selectedPdfFile == null) {
+      developer.log('Showing no PDF selected');
       return _buildNoPdfSelected(isDesignMode);
     }
 
     if (scoreProvider.errorMessage != null) {
+      developer.log('Showing error state: ${scoreProvider.errorMessage}');
       return _buildErrorState(scoreProvider.errorMessage!);
     }
 
-    final pdfViewer = SfPdfViewer.file(
-      scoreProvider.selectedPdfFile!,
-      controller: _pdfViewerController,
-      onDocumentLoaded: _onDocumentLoaded,
-      onPageChanged: _onPageChanged,
-      onDocumentLoadFailed: _onDocumentLoadFailed,
-      enableDoubleTapZooming: !isDesignMode, // Disable zoom in design mode
-      interactionMode: isDesignMode 
-          ? PdfInteractionMode.selection // This prevents scrolling
-          : PdfInteractionMode.pan, // Normal interaction in playback mode
-      canShowScrollHead: false,
-      canShowScrollStatus: false,
-      canShowPaginationDialog: false,
-      pageLayoutMode: PdfPageLayoutMode.single, // Show one page at a time
-    );
+    // Add a layout builder to ensure we have valid dimensions before rendering PDF
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Log constraints for debugging
+        developer.log('ScoreViewer constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
+        
+        // Only block rendering if dimensions are truly invalid (NaN)
+        if (constraints.maxWidth.isNaN || constraints.maxHeight.isNaN) {
+          developer.log('Invalid constraints detected (NaN), showing placeholder');
+          // Return a placeholder while dimensions are being calculated
+          return Container(
+            color: Colors.grey[100],
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    // Always wrap with rectangle overlay to show rectangles in both modes
-    return InteractiveRectangleOverlay(
-      currentPageNumber: scoreProvider.currentPageNumber,
-      pdfPageSize: _pdfPageSize,
-      child: isDesignMode 
-          ? IgnorePointer(
-              child: pdfViewer, // Ignore PDF gestures in design mode
-            )
-          : pdfViewer, // Allow PDF gestures in playback mode
+        final pdfViewer = SfPdfViewer.file(
+          scoreProvider.selectedPdfFile!,
+          controller: _pdfViewerController,
+          onDocumentLoaded: _onDocumentLoaded,
+          onPageChanged: _onPageChanged,
+          onDocumentLoadFailed: _onDocumentLoadFailed,
+          enableDoubleTapZooming: !isDesignMode, // Disable zoom in design mode
+          interactionMode: isDesignMode 
+              ? PdfInteractionMode.selection // This prevents scrolling
+              : PdfInteractionMode.pan, // Normal interaction in playback mode
+          canShowScrollHead: false,
+          canShowScrollStatus: false,
+          canShowPaginationDialog: false,
+          pageLayoutMode: PdfPageLayoutMode.single, // Show one page at a time
+        );
+
+        // Always wrap with rectangle overlay to show rectangles in both modes
+        return InteractiveRectangleOverlay(
+          currentPageNumber: scoreProvider.currentPageNumber,
+          pdfPageSize: _pdfPageSize,
+          child: isDesignMode 
+              ? IgnorePointer(
+                  child: pdfViewer, // Ignore PDF gestures in design mode
+                )
+              : pdfViewer, // Allow PDF gestures in playback mode
+        );
+      },
     );
   }
 
@@ -272,6 +306,8 @@ class _ScoreViewerState extends State<ScoreViewer> {
   Widget build(BuildContext context) {
     return Consumer2<ScoreProvider, AppModeProvider>(
       builder: (context, scoreProvider, appModeProvider, _) {
+        developer.log('ScoreViewer build: hasFile=${scoreProvider.selectedPdfFile != null}, isDesignMode=${appModeProvider.isDesignMode}, showGuiControls=${widget.showGuiControls}');
+        
         return Column(
           children: [
             if (widget.showGuiControls && scoreProvider.isLoading)

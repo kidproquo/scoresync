@@ -260,3 +260,23 @@ lib/
   - Resolved tap detection causing video player resets by removing complex split-layer approach
   - Implemented proper tap overlay system that only appears when controls are hidden
   - Restored proper control interaction while maintaining fullscreen tap-to-toggle functionality
+- **Implemented comprehensive metronome feature**:
+  - Added complete metronome system with BPM, time signature, count-in, and volume controls
+  - Created metronome models (`MetronomeSettings`, `TimeSignature`) and provider (`MetronomeProvider`)
+  - Built metronome settings panel with sliders for BPM/volume and toggles for enable/count-in
+  - Integrated metronome with video playback: starts with video, includes optional count-in measure
+  - Added metronome button to floating top bar in playback mode with visual indicators
+  - Used system sounds (`SystemSoundType.click`) for reliable audio playback across platforms
+  - Implemented clean single-metronome approach: starts immediately, video waits for count-in measure
+  - Fixed timing issues to ensure steady beat without pauses between measures
+- **Enhanced YouTube player integration**:
+  - Hidden YouTube's default controls using `hideControls: true` and `disableDragSeek: true`
+  - Removed YouTube player's top actions bar for cleaner video display
+  - Extended tap-to-show-controls functionality to work over the YouTube video area
+  - Added transparent tap overlay on video area when controls are hidden
+  - Ensured consistent control behavior across both score and video areas
+- **Improved app logging and performance**:
+  - Removed verbose position update logs for cleaner console output
+  - Removed metronome click logs to reduce noise while maintaining error logging
+  - Fixed video player state management to prevent multiple metronome instances
+  - Simplified metronome integration logic for better reliability

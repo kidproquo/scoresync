@@ -14,8 +14,10 @@ import 'providers/video_provider.dart';
 import 'providers/sync_provider.dart';
 import 'providers/rectangle_provider.dart';
 import 'providers/song_provider.dart';
+import 'providers/metronome_provider.dart';
 import 'widgets/song_menu.dart';
 import 'widgets/load_song_dialog.dart';
+import 'widgets/metronome/metronome_settings_panel.dart';
 import 'services/song_storage_service.dart';
 
 void main() {
@@ -41,6 +43,7 @@ class ScoreSyncApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SyncProvider()),
         ChangeNotifierProvider(create: (_) => RectangleProvider()),
         ChangeNotifierProvider(create: (_) => SongProvider()),
+        ChangeNotifierProvider(create: (_) => MetronomeProvider()),
       ],
       child: MaterialApp(
         title: 'Score Sync',
@@ -426,6 +429,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _showGuiControls = true;
   Timer? _hideTimer;
   bool _hasInitialized = false;
+  bool _showMetronomeSettings = false;
 
   @override
   void dispose() {
@@ -470,10 +474,15 @@ class _MainScreenState extends State<MainScreen> {
         // In playback mode, show GUI controls initially and start timer
         if (isPlaybackMode && !_hasInitialized) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() {
-              _hasInitialized = true;
+            // Add a small delay to allow layout to stabilize before initializing
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted) {
+                setState(() {
+                  _hasInitialized = true;
+                });
+                _startHideTimer();
+              }
             });
-            _startHideTimer();
           });
         } else if (!isPlaybackMode) {
           // Reset state when switching to design mode
@@ -511,7 +520,10 @@ class _MainScreenState extends State<MainScreen> {
       children: [
         // Fullscreen score viewer
         Positioned.fill(
-          child: ScoreViewer(showGuiControls: _showGuiControls),
+          child: Container(
+            key: const ValueKey('fullscreen_score_viewer'),
+            child: ScoreViewer(showGuiControls: _showGuiControls),
+          ),
         ),
         // Tap overlay (only when controls are hidden)
         if (!_showGuiControls)
@@ -548,7 +560,21 @@ class _MainScreenState extends State<MainScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: YouTubePlayerWidget(showGuiControls: _showGuiControls),
+              child: Stack(
+                children: [
+                  // YouTube player
+                  YouTubePlayerWidget(showGuiControls: _showGuiControls),
+                  // Tap overlay for video area (only when controls are hidden)
+                  if (!_showGuiControls)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: _onTap,
+                        behavior: HitTestBehavior.translucent,
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -596,96 +622,141 @@ class _MainScreenState extends State<MainScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Consumer<AppModeProvider>(
-                          builder: (context, appModeProvider, _) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  InkWell(
-                                    onTap: () => appModeProvider.setDesignMode(),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: appModeProvider.isDesignMode 
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Metronome button (only in playback mode)
+                            Consumer<MetronomeProvider>(
+                              builder: (context, metronomeProvider, _) {
+                                return IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _showMetronomeSettings = !_showMetronomeSettings;
+                                    });
+                                  },
+                                  icon: Stack(
+                                    children: [
+                                      Icon(
+                                        Icons.music_note,
+                                        color: metronomeProvider.settings.isEnabled 
                                             ? Colors.white 
-                                            : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(16),
+                                            : Colors.white54,
+                                        size: 20,
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.edit,
-                                            size: 16,
+                                      if (metronomeProvider.isPlaying)
+                                        Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          child: Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.green,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  tooltip: 'Metronome Settings',
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            
+                            // Mode switcher
+                            Consumer<AppModeProvider>(
+                              builder: (context, appModeProvider, _) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => appModeProvider.setDesignMode(),
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
                                             color: appModeProvider.isDesignMode 
-                                                ? Colors.black87 
-                                                : Colors.white70,
+                                                ? Colors.white 
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(16),
                                           ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Design',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: appModeProvider.isDesignMode 
-                                                  ? Colors.black87 
-                                                  : Colors.white70,
-                                              fontWeight: appModeProvider.isDesignMode 
-                                                  ? FontWeight.w600 
-                                                  : FontWeight.normal,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.edit,
+                                                size: 16,
+                                                color: appModeProvider.isDesignMode 
+                                                    ? Colors.black87 
+                                                    : Colors.white70,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Design',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: appModeProvider.isDesignMode 
+                                                      ? Colors.black87 
+                                                      : Colors.white70,
+                                                  fontWeight: appModeProvider.isDesignMode 
+                                                      ? FontWeight.w600 
+                                                      : FontWeight.normal,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  InkWell(
-                                    onTap: () => appModeProvider.setPlaybackMode(),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: appModeProvider.isPlaybackMode 
-                                            ? Colors.white 
-                                            : Colors.transparent,
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: () => appModeProvider.setPlaybackMode(),
                                         borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.play_arrow,
-                                            size: 16,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
                                             color: appModeProvider.isPlaybackMode 
-                                                ? Colors.black87 
-                                                : Colors.white70,
+                                                ? Colors.white 
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(16),
                                           ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Playback',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: appModeProvider.isPlaybackMode 
-                                                  ? Colors.black87 
-                                                  : Colors.white70,
-                                              fontWeight: appModeProvider.isPlaybackMode 
-                                                  ? FontWeight.w600 
-                                                  : FontWeight.normal,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.play_arrow,
+                                                size: 16,
+                                                color: appModeProvider.isPlaybackMode 
+                                                    ? Colors.black87 
+                                                    : Colors.white70,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Playback',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: appModeProvider.isPlaybackMode 
+                                                      ? Colors.black87 
+                                                      : Colors.white70,
+                                                  fontWeight: appModeProvider.isPlaybackMode 
+                                                      ? FontWeight.w600 
+                                                      : FontWeight.normal,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          },
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -693,6 +764,22 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
             ),
+          ),
+        ),
+        // Metronome settings panel (slides up from bottom)
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          bottom: _showMetronomeSettings ? 0 : -400,
+          left: 0,
+          right: 0,
+          height: 400,
+          child: MetronomeSettingsPanel(
+            onClose: () {
+              setState(() {
+                _showMetronomeSettings = false;
+              });
+            },
           ),
         ),
       ],

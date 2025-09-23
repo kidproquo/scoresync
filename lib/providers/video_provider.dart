@@ -134,11 +134,21 @@ class VideoProvider extends ChangeNotifier {
     setCurrentUrl('');
   }
 
-  // Callback for seeking video - will be set by YouTube player
+  // Callbacks for controlling video - will be set by YouTube player
   Function(Duration)? _seekToCallback;
+  Function()? _playCallback;
+  Function()? _pauseCallback;
 
   void setSeekToCallback(Function(Duration)? callback) {
     _seekToCallback = callback;
+  }
+
+  void setPlayCallback(Function()? callback) {
+    _playCallback = callback;
+  }
+
+  void setPauseCallback(Function()? callback) {
+    _pauseCallback = callback;
   }
 
   void seekTo(Duration position) {
@@ -147,6 +157,24 @@ class VideoProvider extends ChangeNotifier {
       developer.log('Seeking to: ${_formatDuration(position)}');
     } else {
       developer.log('Cannot seek - no callback set or player not ready');
+    }
+  }
+
+  void play() {
+    if (_playCallback != null && _isPlayerReady) {
+      _playCallback!();
+      developer.log('Video play requested');
+    } else {
+      developer.log('Cannot play - no callback set or player not ready');
+    }
+  }
+
+  void pause() {
+    if (_pauseCallback != null && _isPlayerReady) {
+      _pauseCallback!();
+      developer.log('Video pause requested');
+    } else {
+      developer.log('Cannot pause - no callback set or player not ready');
     }
   }
 }

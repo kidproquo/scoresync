@@ -56,6 +56,9 @@ dependencies:
   
   # Sharing and intent handling
   receive_sharing_intent: ^1.8.0
+  
+  # Audio playback for metronome
+  just_audio: ^0.9.40
 
 dev_dependencies:
   flutter_test:

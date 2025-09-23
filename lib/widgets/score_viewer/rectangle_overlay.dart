@@ -5,6 +5,7 @@ import '../../models/rectangle.dart';
 import '../../providers/rectangle_provider.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/video_provider.dart';
+import '../../providers/metronome_provider.dart';
 import 'rectangle_painter.dart';
 
 class InteractiveRectangleOverlay extends StatefulWidget {
@@ -145,11 +146,17 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
 
   void _handleTimestampBadgeTap(Duration timestamp) {
     final videoProvider = context.read<VideoProvider>();
+    final metronomeProvider = context.read<MetronomeProvider>();
     
     if (videoProvider.hasVideo) {
-      // Seek video to timestamp (we'll need to implement this)
+      developer.log('Timestamp badge tapped: seeking to ${_formatDuration(timestamp)}');
+      
+      // Stop everything and seek to timestamp, then pause
+      metronomeProvider.stopMetronome();
       videoProvider.seekTo(timestamp);
-      developer.log('Seeking video to ${_formatDuration(timestamp)}');
+      videoProvider.pause();
+      
+      developer.log('Video paused at ${_formatDuration(timestamp)} - press play to start with metronome');
     }
   }
 

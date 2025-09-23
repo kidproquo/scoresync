@@ -8,6 +8,7 @@ import '../../providers/song_provider.dart';
 import '../../providers/video_provider.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/metronome_provider.dart';
+import '../metronome/count_in_overlay.dart';
 
 class YouTubePlayerWidget extends StatefulWidget {
   final bool showGuiControls;
@@ -34,6 +35,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   Timer? _loadingTimeout;
   Timer? _positionTimer;
   VideoProvider? _videoProvider;
+  bool _showCountIn = false;
 
   @override
   void didChangeDependencies() {
@@ -220,10 +222,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   }
   
   void _startPositionTracking() {
-    // Only use timer as a fallback for smoother updates
+    // High-resolution position tracking for precise synchronization
     // The YouTube player listener should handle most updates
     _positionTimer?.cancel();
-    _positionTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+    _positionTimer = Timer.periodic(const Duration(milliseconds: 10), (_) {
       if (_controller != null && mounted) {
         try {
           // Additional safety checks before accessing controller
@@ -244,7 +246,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         }
       }
     });
-    developer.log('Started supplemental position tracking (250ms)');
+    developer.log('Started supplemental position tracking (10ms)');
   }
   
   void _stopPositionTracking() {
@@ -347,6 +349,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         metronomeProvider.startMetronome();
         
         if (metronomeProvider.settings.countInEnabled) {
+          // Show count-in overlay
+          setState(() {
+            _showCountIn = true;
+          });
+          
           // Wait for 1 measure before starting video
           final measureDuration = Duration(
             milliseconds: (60000 / metronomeProvider.settings.bpm * metronomeProvider.settings.timeSignature.numerator).round(),
@@ -356,6 +363,9 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           Future.delayed(measureDuration, () {
             if (mounted && _controller != null && _isPlayerReady) {
               developer.log('Count-in complete, starting video');
+              setState(() {
+                _showCountIn = false;
+              });
               _controller!.play();
             }
           });
@@ -634,6 +644,18 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                       )
                     : _buildPlayer(),
               ),
+              // Count-in overlay (only show during count-in)
+              if (_showCountIn)
+                Positioned.fill(
+                  child: Consumer<MetronomeProvider>(
+                    builder: (context, metronomeProvider, _) {
+                      return CountInOverlay(
+                        currentBeat: metronomeProvider.currentBeat,
+                        totalBeats: metronomeProvider.settings.timeSignature.numerator,
+                      );
+                    },
+                  ),
+                ),
               // Video controls overlay (only show if showGuiControls is true)
               if (widget.showGuiControls)
                 Positioned(

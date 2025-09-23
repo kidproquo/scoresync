@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
 import 'dart:async';
 import 'dart:developer' as developer;
 import '../models/metronome_settings.dart';
@@ -49,6 +48,16 @@ class MetronomeProvider extends ChangeNotifier {
       developer.log('Restarting metronome after settings update');
       startMetronome();
     }
+    
+    // Trigger save to song when settings change
+    _onSettingsChanged?.call();
+  }
+
+  // Callback for when settings change (to save to song)
+  Function()? _onSettingsChanged;
+
+  void setOnSettingsChangedCallback(Function()? callback) {
+    _onSettingsChanged = callback;
   }
 
   void toggleEnabled() {

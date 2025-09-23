@@ -11,6 +11,7 @@ import 'sync_provider.dart';
 import 'score_provider.dart';
 import 'video_provider.dart';
 import 'rectangle_provider.dart';
+import 'metronome_provider.dart';
 
 class SongProvider extends ChangeNotifier {
   Song? _currentSong;
@@ -23,6 +24,7 @@ class SongProvider extends ChangeNotifier {
   ScoreProvider? _scoreProvider;
   VideoProvider? _videoProvider;
   RectangleProvider? _rectangleProvider;
+  MetronomeProvider? _metronomeProvider;
   
   // Debouncing timer for rectangle updates
   Timer? _rectangleUpdateTimer;
@@ -41,14 +43,17 @@ class SongProvider extends ChangeNotifier {
     required VideoProvider videoProvider,
     required RectangleProvider rectangleProvider,
     required SyncProvider syncProvider,
+    required MetronomeProvider metronomeProvider,
   }) {
     developer.log('Setting provider references...');
     _scoreProvider = scoreProvider;
     _videoProvider = videoProvider;
     _rectangleProvider = rectangleProvider;
+    _metronomeProvider = metronomeProvider;
     
     // Set up auto-save callbacks
     _rectangleProvider?.setOnRectanglesChanged(_onRectanglesChanged);
+    _metronomeProvider?.setOnSettingsChangedCallback(_onMetronomeSettingsChanged);
     developer.log('Provider references set successfully');
   }
 
@@ -64,6 +69,11 @@ class SongProvider extends ChangeNotifier {
         _updateSongRectanglesDebounced(rectangles);
       });
     }
+  }
+
+  // Handle metronome settings changes
+  void _onMetronomeSettingsChanged() {
+    updateSongMetronomeSettings();
   }
 
   // Update rectangles without debouncing (for immediate saves)
@@ -297,6 +307,29 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
+  // Update current song's metronome settings
+  Future<void> updateSongMetronomeSettings() async {
+    if (_currentSong == null || _metronomeProvider == null) return;
+
+    try {
+      final updatedSong = _currentSong!.copyWith(
+        metronomeSettings: _metronomeProvider!.settings,
+      );
+      await _saveSongDirect(updatedSong);
+      _currentSong = updatedSong;
+      
+      // Update local songs list
+      _songs.removeWhere((s) => s.name == updatedSong.name);
+      _songs.add(updatedSong);
+      _songs.sort((a, b) => a.name.compareTo(b.name));
+      
+      developer.log('Saved metronome settings for song: ${_currentSong!.name}');
+      notifyListeners();
+    } catch (e) {
+      developer.log('Error updating metronome settings: $e');
+    }
+  }
+
   // Private helper to save song (reloads all songs)
   Future<void> _saveSong(Song song) async {
     await SongStorageService.instance.saveSong(song);
@@ -414,6 +447,15 @@ class SongProvider extends ChangeNotifier {
         developer.log('Video URL successfully loaded into VideoProvider');
       } else {
         developer.log('Skipping video load - videoUrl: ${song.videoUrl}, videoProvider: ${_videoProvider != null}');
+      }
+
+      // Load metronome settings into MetronomeProvider
+      if (_metronomeProvider != null) {
+        developer.log('Loading metronome settings: ${song.metronomeSettings.toString()}');
+        _metronomeProvider!.updateSettings(song.metronomeSettings);
+        developer.log('Metronome settings successfully loaded into MetronomeProvider');
+      } else {
+        developer.log('MetronomeProvider is null');
       }
 
       // Load sync points into SyncProvider

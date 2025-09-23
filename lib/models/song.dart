@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'rectangle.dart';
+import 'metronome_settings.dart';
 
 class Song {
   final String name;
   final String? pdfPath;
   final List<DrawnRectangle> rectangles;
   final String? videoUrl;
+  final MetronomeSettings metronomeSettings;
   final DateTime createdAt;
   final DateTime lastModified;
 
@@ -16,9 +18,11 @@ class Song {
     this.pdfPath,
     List<DrawnRectangle>? rectangles,
     this.videoUrl,
+    MetronomeSettings? metronomeSettings,
     DateTime? createdAt,
     DateTime? lastModified,
   })  : rectangles = rectangles ?? [],
+        metronomeSettings = metronomeSettings ?? MetronomeSettings(),
         createdAt = createdAt ?? DateTime.now(),
         lastModified = lastModified ?? DateTime.now();
 
@@ -27,6 +31,7 @@ class Song {
     String? pdfPath,
     List<DrawnRectangle>? rectangles,
     String? videoUrl,
+    MetronomeSettings? metronomeSettings,
     DateTime? createdAt,
     DateTime? lastModified,
   }) {
@@ -35,6 +40,7 @@ class Song {
       pdfPath: pdfPath ?? this.pdfPath,
       rectangles: rectangles ?? List.from(this.rectangles),
       videoUrl: videoUrl ?? this.videoUrl,
+      metronomeSettings: metronomeSettings ?? this.metronomeSettings,
       createdAt: createdAt ?? this.createdAt,
       lastModified: lastModified ?? DateTime.now(),
     );
@@ -83,6 +89,7 @@ class Song {
       'pdfPath': pdfPath,
       'rectangles': rectangles.map((r) => r.toJson()).toList(),
       'videoUrl': videoUrl,
+      'metronomeSettings': metronomeSettings.toJson(),
       'createdAt': createdAt.toIso8601String(),
       'lastModified': lastModified.toIso8601String(),
     };
@@ -97,6 +104,9 @@ class Song {
           ?.map((r) => DrawnRectangle.fromJson(r as Map<String, dynamic>))
           .toList() ?? [],
       videoUrl: json['videoUrl'] as String?,
+      metronomeSettings: json['metronomeSettings'] != null
+          ? MetronomeSettings.fromJson(json['metronomeSettings'] as Map<String, dynamic>)
+          : MetronomeSettings(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       lastModified: DateTime.parse(json['lastModified'] as String),
     );

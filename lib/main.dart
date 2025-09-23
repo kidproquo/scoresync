@@ -111,6 +111,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
         videoProvider: context.read<VideoProvider>(),
         rectangleProvider: context.read<RectangleProvider>(),
         syncProvider: context.read<SyncProvider>(),
+        metronomeProvider: context.read<MetronomeProvider>(),
       );
       await songProvider.initialize();
       

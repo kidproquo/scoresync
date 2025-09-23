@@ -263,7 +263,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       final wasPlaying = _isPlaying;
       final isNowReady = _controller!.value.isReady;
       final isNowPlaying = _controller!.value.isPlaying;
-      final oldPosition = _currentPosition;
       
       setState(() {
         _isPlayerReady = isNowReady;

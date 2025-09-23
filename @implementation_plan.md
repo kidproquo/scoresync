@@ -294,3 +294,9 @@ lib/
   - Confirmed metronome operates on independent timer system (not affected by video performance)
   - Maintained consistent BPM timing regardless of video playback speed or seeking
   - Ensured metronome provides reliable rhythmic foundation for music practice
+- **Per-song metronome settings persistence**:
+  - Added MetronomeSettings field to Song model with complete serialization support
+  - Integrated metronome settings into SongProvider with automatic save/load functionality
+  - Implemented callback system in MetronomeProvider to trigger immediate saves on settings changes
+  - Connected all providers to ensure metronome settings persist and restore when switching songs
+  - Settings include BPM, time signature, count-in enabled, volume, and enable/disable state

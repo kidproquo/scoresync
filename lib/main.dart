@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:developer' as developer;
@@ -18,6 +19,7 @@ import 'providers/metronome_provider.dart';
 import 'widgets/song_menu.dart';
 import 'widgets/load_song_dialog.dart';
 import 'widgets/metronome/metronome_settings_panel.dart';
+import 'widgets/score_viewer/page_controls.dart';
 import 'services/song_storage_service.dart';
 
 void main() {
@@ -464,6 +466,61 @@ class _MainScreenState extends State<MainScreen> {
     _toggleGuiControls();
   }
 
+  void _goToFirstPage(BuildContext context) {
+    final scoreProvider = context.read<ScoreProvider>();
+    scoreProvider.setCurrentPage(1);
+  }
+
+  void _goToPreviousPage(BuildContext context) {
+    final scoreProvider = context.read<ScoreProvider>();
+    if (scoreProvider.canGoToPreviousPage()) {
+      scoreProvider.setCurrentPage(scoreProvider.currentPageNumber - 1);
+    }
+  }
+
+  void _goToNextPage(BuildContext context) {
+    final scoreProvider = context.read<ScoreProvider>();
+    if (scoreProvider.canGoToNextPage()) {
+      scoreProvider.setCurrentPage(scoreProvider.currentPageNumber + 1);
+    }
+  }
+
+  void _goToLastPage(BuildContext context) {
+    final scoreProvider = context.read<ScoreProvider>();
+    scoreProvider.setCurrentPage(scoreProvider.totalPages);
+  }
+
+  Future<void> _pickPdfFile(BuildContext context) async {
+    final scoreProvider = context.read<ScoreProvider>();
+    final songProvider = context.read<SongProvider>();
+    scoreProvider.setLoading(true);
+
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        scoreProvider.setSelectedPdf(file);
+        
+        // Update the current song with the new PDF
+        await songProvider.updateSongPdf(file);
+        
+        developer.log('PDF file selected and saved to song: ${file.path}');
+      } else {
+        developer.log('PDF file selection cancelled');
+      }
+    } catch (e) {
+      scoreProvider.setError('Error selecting PDF file: $e');
+      developer.log('Error picking PDF file: $e');
+    } finally {
+      scoreProvider.setLoading(false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<SongProvider, AppModeProvider>(
@@ -523,7 +580,7 @@ class _MainScreenState extends State<MainScreen> {
         Positioned.fill(
           child: Container(
             key: const ValueKey('fullscreen_score_viewer'),
-            child: ScoreViewer(showGuiControls: _showGuiControls),
+            child: const ScoreViewer(),
           ),
         ),
         // Tap overlay (only when controls are hidden)
@@ -767,6 +824,45 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
+        // Page controls overlay at bottom (auto-hide)
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          bottom: _showGuiControls ? 0 : -100,
+          left: 0,
+          right: 0,
+          child: Consumer2<ScoreProvider, SongProvider>(
+            builder: (context, scoreProvider, songProvider, _) {
+              if (scoreProvider.selectedPdfFile != null && scoreProvider.totalPages > 0) {
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.6),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: PageControls(
+                    currentPage: scoreProvider.currentPageNumber,
+                    totalPages: scoreProvider.totalPages,
+                    onFirstPage: () => _goToFirstPage(context),
+                    onPreviousPage: () => _goToPreviousPage(context),
+                    onNextPage: () => _goToNextPage(context),
+                    onLastPage: () => _goToLastPage(context),
+                    onSelectPdf: () => _pickPdfFile(context),
+                    canSelectPdf: songProvider.currentSong != null,
+                    isDesignMode: false, // Always false in playback mode
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
         // Metronome settings panel (slides up from bottom)
         AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
@@ -847,7 +943,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
             ),
-            child: ScoreViewer(showGuiControls: _showGuiControls),
+            child: const ScoreViewer(),
           ),
         ),
         Expanded(

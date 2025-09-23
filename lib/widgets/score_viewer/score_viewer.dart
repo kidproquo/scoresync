@@ -11,11 +11,8 @@ import 'page_controls.dart';
 import 'rectangle_overlay.dart';
 
 class ScoreViewer extends StatefulWidget {
-  final bool showGuiControls;
-  
   const ScoreViewer({
     super.key,
-    this.showGuiControls = true,
   });
 
   @override
@@ -306,30 +303,21 @@ class _ScoreViewerState extends State<ScoreViewer> {
   Widget build(BuildContext context) {
     return Consumer2<ScoreProvider, AppModeProvider>(
       builder: (context, scoreProvider, appModeProvider, _) {
-        developer.log('ScoreViewer build: hasFile=${scoreProvider.selectedPdfFile != null}, isDesignMode=${appModeProvider.isDesignMode}, showGuiControls=${widget.showGuiControls}');
+        developer.log('ScoreViewer build: hasFile=${scoreProvider.selectedPdfFile != null}, isDesignMode=${appModeProvider.isDesignMode}');
         
-        return Column(
+        return Stack(
           children: [
-            if (widget.showGuiControls && scoreProvider.isLoading)
-              const LinearProgressIndicator(),
-            Expanded(
+            // PDF viewer fills entire area
+            Positioned.fill(
               child: _buildPdfViewer(scoreProvider, appModeProvider.isDesignMode),
             ),
-            if (widget.showGuiControls && 
-                scoreProvider.selectedPdfFile != null && 
-                scoreProvider.totalPages > 0)
-              Consumer<SongProvider>(
-                builder: (context, songProvider, _) => PageControls(
-                  currentPage: scoreProvider.currentPageNumber,
-                  totalPages: scoreProvider.totalPages,
-                  onFirstPage: _goToFirstPage,
-                  onPreviousPage: _goToPreviousPage,
-                  onNextPage: _goToNextPage,
-                  onLastPage: _goToLastPage,
-                  onSelectPdf: _pickPdfFile,
-                  canSelectPdf: songProvider.currentSong != null,
-                  isDesignMode: appModeProvider.isDesignMode,
-                ),
+            // Loading indicator overlay
+            if (scoreProvider.isLoading)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(),
               ),
           ],
         );

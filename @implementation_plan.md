@@ -308,3 +308,10 @@ lib/
   - Simplified video positioning to use static `bottom: 80` position without GUI controls dependency
   - Maintained AnimatedPositioned for smooth animation capabilities while eliminating layout triggers
   - Fixed video overlay placement to prevent overlap with bottom page controls
+- **Implemented fixed-size score viewer with overlaid controls**:
+  - Removed showGuiControls prop from ScoreViewer to eliminate layout dependencies
+  - Changed ScoreViewer from Column to Stack layout with Positioned.fill for PDF viewer
+  - Added overlaid page controls at bottom in playback mode with gradient background
+  - Implemented AnimatedPositioned for smooth slide transitions of page controls
+  - Preserved tap-to-toggle behavior while preventing content shifting during auto-hide
+  - Maintained existing design mode layout unchanged for consistent editing experience

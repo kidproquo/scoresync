@@ -300,3 +300,11 @@ lib/
   - Implemented callback system in MetronomeProvider to trigger immediate saves on settings changes
   - Connected all providers to ensure metronome settings persist and restore when switching songs
   - Settings include BPM, time signature, count-in enabled, volume, and enable/disable state
+- **Added 9/8 and 12/8 time signatures to metronome**:
+  - Extended TimeSignatures constants with `nineEight` (9/8) and `twelveEight` (12/8) options
+  - Updated metronome settings UI to include these compound time signatures for complex rhythms
+- **Fixed video overlay positioning and reset issue**:
+  - Resolved video reset problem caused by conditional positioning in AnimatedPositioned widget
+  - Simplified video positioning to use static `bottom: 80` position without GUI controls dependency
+  - Maintained AnimatedPositioned for smooth animation capabilities while eliminating layout triggers
+  - Fixed video overlay placement to prevent overlap with bottom page controls

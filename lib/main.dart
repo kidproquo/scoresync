@@ -539,7 +539,7 @@ class _MainScreenState extends State<MainScreen> {
         AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          bottom: _showGuiControls ? 80 : 20, // Adjust position when page controls are visible
+          bottom: 80,
           right: 20,
           width: 320,
           height: 240, // Fixed height since controls are now overlaid

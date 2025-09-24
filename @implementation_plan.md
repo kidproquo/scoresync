@@ -362,3 +362,10 @@ lib/
   - Modified AnimatedPositioned widget in main.dart to control actual window size
   - Video player now fills the entire reduced window without black bars
   - Overlay position (bottom: 80, right: 20) remains unchanged
+- **Enhanced sync point badge transparency and size**:
+  - Reduced badge background opacity from 90% to 27% (alpha 70) for much better music visibility
+  - Made badge borders more transparent (alpha 120) for softer appearance
+  - Reduced font size from 11 to 9 pixels for less visual obstruction
+  - Decreased badge height from 20 to 16 pixels and padding from 4 to 3 pixels
+  - Added stronger text shadow (black87) for readability on transparent background
+  - Adjusted tap detection areas to match new smaller badge dimensions

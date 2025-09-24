@@ -213,16 +213,16 @@ class RectanglePainter extends CustomPainter {
   void _drawTimestampBadges(Canvas canvas, DrawnRectangle rectangle) {
     if (rectangle.timestamps.isEmpty) return;
     
-    const badgeHeight = 20.0;
-    const badgePadding = 4.0;
+    const badgeHeight = 16.0; // Reduced from 20.0 to match smaller font
+    const badgePadding = 3.0; // Reduced from 4.0 for more compact badges
     const badgeSpacing = 2.0;
     
     final badgePaint = Paint()
-      ..color = Colors.green.withAlpha(230)
+      ..color = Colors.green.withAlpha(70) // Very transparent - about 27% opacity
       ..style = PaintingStyle.fill;
-      
+
     final badgeBorderPaint = Paint()
-      ..color = Colors.green
+      ..color = Colors.green.withAlpha(120) // More transparent border
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
     
@@ -241,10 +241,17 @@ class RectanglePainter extends CustomPainter {
       final textPainter = TextPainter(
         text: TextSpan(
           text: timeText,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontSize: 9, // Reduced from 11 for smaller badges
+            fontWeight: FontWeight.bold, // Slightly bolder for better readability
+            shadows: const [
+              Shadow(
+                offset: Offset(0.5, 0.5),
+                blurRadius: 2.0,
+                color: Colors.black87, // Stronger shadow for better contrast
+              ),
+            ], // Add shadow for better contrast
           ),
         ),
         textDirection: TextDirection.ltr,

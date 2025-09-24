@@ -167,8 +167,8 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
   Duration? _getTimestampAtPoint(DrawnRectangle rectangle, Offset point) {
     if (rectangle.timestamps.isEmpty) return null;
     
-    const badgeHeight = 20.0;
-    const badgePadding = 4.0;
+    const badgeHeight = 16.0; // Reduced from 20.0 to match smaller font
+    const badgePadding = 3.0; // Reduced from 4.0 for more compact badges
     const badgeSpacing = 2.0;
     const buttonSize = 24.0; // Size of delete/sync buttons
     
@@ -181,8 +181,8 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
       final timestamp = rectangle.timestamps[i];
       final timeText = _formatDuration(timestamp);
       
-      // Estimate badge width (simplified calculation)
-      final badgeWidth = timeText.length * 8.0 + badgePadding * 2;
+      // Estimate badge width (simplified calculation - reduced for smaller font)
+      final badgeWidth = timeText.length * 6.5 + badgePadding * 2;
       final badgeRect = Rect.fromLTWH(
         startX,
         currentY,

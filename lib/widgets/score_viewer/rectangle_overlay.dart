@@ -123,24 +123,45 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
 
   void _handleSyncButtonTap(DrawnRectangle rectangle) {
     final videoProvider = context.read<VideoProvider>();
-    
+
     if (!videoProvider.hasVideo) {
       developer.log('No video loaded - cannot create sync point');
       return;
     }
-    
+
     // Get current video position
     final currentPosition = videoProvider.currentPosition;
-    
-    // Add timestamp to rectangle
+
+    // Check for duplicate within 10ms tolerance
+    const tolerance = Duration(milliseconds: 10);
+    for (final existing in rectangle.timestamps) {
+      final difference = (currentPosition - existing).abs();
+      if (difference <= tolerance) {
+        developer.log('Sync point at ${_formatDuration(currentPosition)} is too close to existing sync point at ${_formatDuration(existing)} (within 10ms)');
+
+        // Show feedback to user via SnackBar
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sync point already exists at ${_formatDuration(existing)}'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // No duplicates found, add the timestamp
     final updatedRectangle = rectangle.copyWith(
       timestamps: [...rectangle.timestamps, currentPosition],
     );
-    
+
     // Update rectangle in provider
     final rectangleProvider = context.read<RectangleProvider>();
     rectangleProvider.updateRectangle(updatedRectangle);
-    
+
     developer.log('Added sync point at ${_formatDuration(currentPosition)} to rectangle ${rectangle.id}');
   }
 

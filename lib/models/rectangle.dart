@@ -87,9 +87,9 @@ class DrawnRectangle {
           height: deleteSize,
         );
       case RectangleHandle.sync:
-        // Sync button is next to delete button, to the right
+        // Sync button is at center of top edge
         return Rect.fromCenter(
-          center: Offset(rect.topLeft.dx + deleteSize, rect.topLeft.dy),
+          center: Offset(rect.center.dx, rect.top),
           width: deleteSize,
           height: deleteSize,
         );
@@ -117,10 +117,20 @@ class DrawnRectangle {
   bool get hasTimestamps => timestamps.isNotEmpty;
   
   void addTimestamp(Duration timestamp) {
-    if (!timestamps.contains(timestamp)) {
-      timestamps.add(timestamp);
-      timestamps.sort();
+    // Check for duplicates within 10ms tolerance
+    const tolerance = Duration(milliseconds: 10);
+
+    for (final existing in timestamps) {
+      final difference = (timestamp - existing).abs();
+      if (difference <= tolerance) {
+        // Timestamp is too close to an existing one, don't add
+        return;
+      }
     }
+
+    // No duplicates found, add the timestamp
+    timestamps.add(timestamp);
+    timestamps.sort();
   }
 
   void removeTimestamp(Duration timestamp) {

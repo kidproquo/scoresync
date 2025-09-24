@@ -369,3 +369,15 @@ lib/
   - Decreased badge height from 20 to 16 pixels and padding from 4 to 3 pixels
   - Added stronger text shadow (black87) for readability on transparent background
   - Adjusted tap detection areas to match new smaller badge dimensions
+- **Repositioned sync button to center of rectangle's top edge**:
+  - Moved sync button from next to delete button to center of top edge for better visual balance
+  - Delete button remains at top-left corner
+  - All resize handles restored (top-right, bottom-left, bottom-right)
+  - Only top-left corner skipped for resize (occupied by delete button)
+- **Implemented duplicate sync point prevention**:
+  - Added 10ms tolerance check to prevent near-duplicate timestamps
+  - Enhanced `addTimestamp` method in rectangle model with duplicate detection
+  - Updated sync button handler to check for duplicates before adding
+  - Added user feedback via orange SnackBar when duplicate detected
+  - Shows existing sync point time to help user understand the rejection
+  - Prevents accidental double-taps and ensures distinct sync points

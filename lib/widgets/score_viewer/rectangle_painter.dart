@@ -106,7 +106,7 @@ class RectanglePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
-    // Draw resize handles (topRight, bottomLeft, bottomRight)
+    // Draw resize handles (skip topLeft as it's for delete button)
     for (final handle in [RectangleHandle.topRight, RectangleHandle.bottomLeft, RectangleHandle.bottomRight]) {
       final handleRect = rectangle.getHandleRect(handle, size: handleSize);
       
@@ -117,7 +117,7 @@ class RectanglePainter extends CustomPainter {
     // Draw delete button at top-left
     _drawDeleteButton(canvas, rectangle, deleteSize);
     
-    // Draw sync button next to delete button
+    // Draw sync button at center of top edge
     _drawSyncButton(canvas, rectangle, deleteSize);
   }
 

@@ -1,74 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:metronome/metronome.dart';
 import 'dart:async';
 import 'dart:developer' as developer;
 import '../models/metronome_settings.dart';
 
 class MetronomeProvider extends ChangeNotifier {
   MetronomeSettings _settings = MetronomeSettings();
-  Timer? _metronomeTimer;
+  late Metronome _metronome;
   int _currentBeat = 0;
   bool _isCountingIn = false;
-  double _playbackRate = 1.0; // Add playback rate
-  
-  // Audio players for metronome sounds
-  AudioPlayer? _accentPlayer;
-  AudioPlayer? _normalPlayer;
-  bool _audioInitialized = false;
-  
-  // Callbacks
-  Function(int beat)? _onBeat;
+  bool _isPlaying = false;
+  bool _isPreviewing = false;
+  double _playbackRate = 1.0;
+  Timer? _countInTimer;
+
+  // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
-  
+
   MetronomeSettings get settings => _settings;
-  bool get isPlaying => _metronomeTimer != null && _metronomeTimer!.isActive;
+  bool get isPlaying => _isPlaying;
   bool get isCountingIn => _isCountingIn;
+  bool get isPreviewing => _isPreviewing;
   int get currentBeat => _currentBeat;
-  
+
   MetronomeProvider() {
-    _initializeAudio();
+    _initializeMetronome();
   }
 
-  Future<void> _initializeAudio() async {
+  Future<void> _initializeMetronome() async {
     try {
-      // Initialize audio players for accent and normal beats
-      _accentPlayer = AudioPlayer();
-      _normalPlayer = AudioPlayer();
-      
-      // Load metronome sound files
-      await _accentPlayer!.setAsset('assets/Synth_Tick_D_hi.wav'); // Higher pitch for accent
-      await _normalPlayer!.setAsset('assets/Synth_Tick_C_hi.wav'); // Normal pitch for regular beats
-      
-      // Set volume based on settings
-      await _accentPlayer!.setVolume(_settings.volume);
-      await _normalPlayer!.setVolume(_settings.volume);
-      
-      _audioInitialized = true;
-      developer.log('Metronome audio initialized with custom WAV files');
+      _metronome = Metronome();
+
+      // Initialize with distinct click and accent sounds
+      await _metronome.init(
+        'assets/woodblock_high44_wav.wav', // Regular click sound (beats 2, 3, 4)
+        accentedPath: 'assets/claves44_wav.wav', // Accent sound (beat 1)
+        bpm: _settings.bpm,
+        volume: (_settings.volume * 100).round(), // Convert 0-1 to 0-100
+        timeSignature: _settings.timeSignature.numerator,
+      );
+
+      developer.log('Metronome initialized with custom WAV files');
     } catch (e) {
-      developer.log('Error initializing metronome audio: $e');
-      developer.log('Falling back to system sounds');
-      _audioInitialized = false;
+      developer.log('Error initializing metronome: $e');
     }
   }
 
   void updateSettings(MetronomeSettings newSettings) {
     final wasPlaying = isPlaying;
     developer.log('updateSettings called: wasPlaying=$wasPlaying, newEnabled=${newSettings.isEnabled}');
-    
+
+    // Pause preview if running
+    _pausePreviewForUpdate();
+
     if (wasPlaying) {
       stopMetronome();
     }
-    
+
     _settings = newSettings;
+
+    // Update metronome settings
+    _metronome.setBPM((_settings.bpm * _playbackRate).round());
+    _metronome.setVolume((_settings.volume * 100).round());
+    _metronome.setTimeSignature(_settings.timeSignature.numerator);
+
     notifyListeners();
-    
+
     if (wasPlaying && _settings.isEnabled) {
       developer.log('Restarting metronome after settings update');
       startMetronome();
     }
-    
+
+    // Resume preview if it was running
+    _resumePreviewAfterUpdate();
+
     // Trigger save to song when settings change
     _onSettingsChanged?.call();
   }
@@ -82,15 +87,15 @@ class MetronomeProvider extends ChangeNotifier {
 
   void toggleEnabled() {
     updateSettings(_settings.copyWith(isEnabled: !_settings.isEnabled));
-    
-    // Don't auto-start metronome when enabled - it should only start with video
+
+    // Stop everything when disabled
     if (!_settings.isEnabled) {
       stopMetronome();
+      stopPreview();
     }
   }
 
   void setBPM(int bpm) {
-    // Clamp BPM between reasonable values
     final clampedBPM = bpm.clamp(40, 240);
     updateSettings(_settings.copyWith(bpm: clampedBPM));
   }
@@ -102,12 +107,6 @@ class MetronomeProvider extends ChangeNotifier {
   void setVolume(double volume) {
     final clampedVolume = volume.clamp(0.0, 1.0);
     updateSettings(_settings.copyWith(volume: clampedVolume));
-    
-    // Update audio player volumes if initialized
-    if (_audioInitialized) {
-      _accentPlayer?.setVolume(clampedVolume);
-      _normalPlayer?.setVolume(clampedVolume);
-    }
   }
 
   void setCountInEnabled(bool enabled) {
@@ -127,45 +126,33 @@ class MetronomeProvider extends ChangeNotifier {
 
   void startMetronome() {
     if (!_settings.isEnabled) return;
-    
+
     stopMetronome(); // Ensure clean start
-    
+
     // Apply playback rate to BPM
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
-    final beatDuration = Duration(
-      milliseconds: (60000 / effectiveBPM).round(),
-    );
-    
-    developer.log('Starting metronome: BPM=${_settings.bpm}, playbackRate=$_playbackRate, effectiveBPM=$effectiveBPM, beatDuration=${beatDuration.inMilliseconds}ms, timeSignature=${_settings.timeSignature.displayString}');
-    
-    _currentBeat = 1; // Start with beat 1
-    _playClick(true); // Play first beat (accent) immediately
-    
-    _metronomeTimer = Timer.periodic(beatDuration, (timer) {
-      // Increment to next beat
-      _currentBeat++;
-      
-      // Reset to 1 after last beat of measure
-      if (_currentBeat > _settings.timeSignature.numerator) {
-        _currentBeat = 1;
-      }
-      
-      
-      // Play accent on beat 1, normal click on other beats
-      _playClick(_currentBeat == 1);
-      
-      _onBeat?.call(_currentBeat);
-      notifyListeners();
-    });
-    
+
+    developer.log('Starting metronome: BPM=${_settings.bpm}, playbackRate=$_playbackRate, effectiveBPM=$effectiveBPM, timeSignature=${_settings.timeSignature.displayString}');
+
+    // Update metronome with effective BPM
+    _metronome.setBPM(effectiveBPM);
+
+    // Start the metronome
+    _metronome.play();
+    _isPlaying = true;
+    notifyListeners();
+
     developer.log('Metronome started at $effectiveBPM effective BPM (base: ${_settings.bpm} BPM × $_playbackRate rate)');
   }
 
   void stopMetronome() {
-    _metronomeTimer?.cancel();
-    _metronomeTimer = null;
+    _metronome.stop();
+    _isPlaying = false;
+    _isPreviewing = false;  // Also stop preview if running
     _currentBeat = 0;
     _isCountingIn = false;
+    _countInTimer?.cancel();
+    _countInTimer = null;
     notifyListeners();
 
     developer.log('Metronome stopped');
@@ -177,7 +164,6 @@ class MetronomeProvider extends ChangeNotifier {
     }
 
     _isCountingIn = true;
-    _currentBeat = 0;
     notifyListeners();
 
     // Apply playback rate to count-in as well
@@ -186,124 +172,104 @@ class MetronomeProvider extends ChangeNotifier {
       milliseconds: (60000 / effectiveBPM).round(),
     );
 
+    // Use the metronome package for count-in beats
+    _metronome.setBPM(effectiveBPM);
+    _metronome.setTimeSignature(_settings.timeSignature.numerator);
+
     for (int beat = 1; beat <= _settings.timeSignature.numerator; beat++) {
+      if (!_isCountingIn) break; // Allow cancellation
+
+      // Set beat and notify BEFORE playing sound and delay
       _currentBeat = beat;
-      _playClick(beat == 1);
       _onCountInBeat?.call(beat);
       notifyListeners();
-      
+
+      // Play one beat using the metronome
+      _metronome.play();
+      await Future.delayed(const Duration(milliseconds: 100)); // Brief play
+      _metronome.pause();
+
+      // Wait for the rest of the beat duration
       if (beat < _settings.timeSignature.numerator) {
-        await Future.delayed(beatDuration);
+        await Future.delayed(beatDuration - const Duration(milliseconds: 100));
       }
     }
 
     _isCountingIn = false;
     _currentBeat = 0;
     notifyListeners();
-    
+
     developer.log('Count-in completed at $effectiveBPM effective BPM');
-  }
-
-  void _playClick(bool isAccent) async {
-    try {
-      if (_audioInitialized && _accentPlayer != null && _normalPlayer != null) {
-        // Use custom WAV files for better sound quality
-        final player = isAccent ? _accentPlayer! : _normalPlayer!;
-        
-        // Reset to beginning and play
-        await player.seek(Duration.zero);
-        await player.play();
-      } else {
-        // Fallback to system sounds if custom audio failed to load
-        SystemSound.play(SystemSoundType.click);
-      }
-    } catch (e) {
-      developer.log('Error playing metronome sound: $e');
-      // Final fallback to system sound
-      SystemSound.play(SystemSoundType.click);
-    }
-  }
-
-  void setOnBeatCallback(Function(int)? callback) {
-    _onBeat = callback;
   }
 
   void setOnCountInBeatCallback(Function(int)? callback) {
     _onCountInBeat = callback;
   }
 
-  // Preview methods for testing sounds
-  Future<void> previewAccentSound() async {
-    _playClick(true);
+  // Toggle preview metronome - continuous play/stop
+  void togglePreview() {
+    if (_isPreviewing) {
+      stopPreview();
+    } else {
+      startPreview();
+    }
   }
 
-  Future<void> previewNormalSound() async {
-    _playClick(false);
-  }
+  void startPreview() {
+    if (!_settings.isEnabled) return;
 
-  // Preview metronome for a few beats
-  Timer? _previewTimer;
-  int _previewBeatCount = 0;
-  bool _isPreviewRunning = false;
-
-  void previewMetronome() {
-    if (!_settings.isEnabled || _isPreviewRunning) return;
-    
-    // Stop main metronome if running
-    final wasPlaying = isPlaying;
-    if (wasPlaying) {
+    // Stop main metronome if playing
+    if (_isPlaying) {
       stopMetronome();
     }
-    
-    _isPreviewRunning = true;
-    _previewBeatCount = 0;
-    
-    // Play 4 beats (one measure) as preview
-    final beatDuration = Duration(
-      milliseconds: (60000 / _settings.bpm).round(),
-    );
-    
+
     developer.log('Starting metronome preview: ${_settings.bpm} BPM, ${_settings.timeSignature.displayString}');
-    
-    // Play first beat immediately
-    _previewBeatCount = 1;
-    _playClick(true); // Accent on first beat
-    
-    // Schedule remaining beats
-    _previewTimer = Timer.periodic(beatDuration, (timer) {
-      _previewBeatCount++;
-      
-      if (_previewBeatCount > _settings.timeSignature.numerator) {
-        // Finished one measure, stop preview
-        _previewTimer?.cancel();
-        _previewTimer = null;
-        _isPreviewRunning = false;
-        developer.log('Metronome preview completed');
-        
-        // Restart main metronome if it was playing before
-        if (wasPlaying) {
-          startMetronome();
-        }
-        return;
-      }
-      
-      // Play accent on beat 1, normal click on other beats
-      _playClick(_previewBeatCount == 1);
-    });
+
+    // Configure and start metronome for preview
+    _metronome.setBPM(_settings.bpm);
+    _metronome.setTimeSignature(_settings.timeSignature.numerator);
+    _metronome.setVolume((_settings.volume * 100).round());
+
+    _metronome.play();
+    _isPreviewing = true;
+    notifyListeners();
+
+    developer.log('Preview metronome started');
+  }
+
+  void stopPreview() {
+    if (!_isPreviewing) return;
+
+    _metronome.stop();
+    _isPreviewing = false;
+    notifyListeners();
+
+    developer.log('Preview metronome stopped');
+  }
+
+  // Pause preview temporarily (when settings change)
+  void _pausePreviewForUpdate() {
+    if (_isPreviewing) {
+      _metronome.pause();
+    }
+  }
+
+  // Resume preview after settings update
+  void _resumePreviewAfterUpdate() {
+    if (_isPreviewing) {
+      // Apply new settings
+      _metronome.setBPM(_settings.bpm);
+      _metronome.setTimeSignature(_settings.timeSignature.numerator);
+      _metronome.setVolume((_settings.volume * 100).round());
+      _metronome.play();
+    }
   }
 
   @override
   void dispose() {
     stopMetronome();
-    
-    // Cancel preview timer
-    _previewTimer?.cancel();
-    _previewTimer = null;
-    
-    // Dispose audio players
-    _accentPlayer?.dispose();
-    _normalPlayer?.dispose();
-    
+    stopPreview();
+    _countInTimer?.cancel();
     super.dispose();
   }
 }

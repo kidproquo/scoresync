@@ -3,19 +3,35 @@ import 'package:provider/provider.dart';
 import '../../providers/metronome_provider.dart';
 import '../../models/metronome_settings.dart';
 
-class MetronomeSettingsPanel extends StatelessWidget {
+class MetronomeSettingsPanel extends StatefulWidget {
   final VoidCallback onClose;
-  
+
   const MetronomeSettingsPanel({
     super.key,
     required this.onClose,
   });
 
   @override
+  State<MetronomeSettingsPanel> createState() => _MetronomeSettingsPanelState();
+}
+
+class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
+  @override
+  void dispose() {
+    // Stop preview when settings panel closes
+    final metronomeProvider = context.read<MetronomeProvider>();
+    if (metronomeProvider.isPreviewing) {
+      metronomeProvider.stopPreview();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<MetronomeProvider>(
       builder: (context, metronomeProvider, _) {
         final settings = metronomeProvider.settings;
+        final isPreviewing = metronomeProvider.isPreviewing;
         
         return Container(
           height: 420,
@@ -59,7 +75,13 @@ class MetronomeSettingsPanel extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      onPressed: onClose,
+                      onPressed: () {
+                        // Stop preview when closing
+                        if (metronomeProvider.isPreviewing) {
+                          metronomeProvider.stopPreview();
+                        }
+                        widget.onClose();
+                      },
                       icon: const Icon(Icons.close, color: Colors.white),
                     ),
                   ],
@@ -96,7 +118,7 @@ class MetronomeSettingsPanel extends StatelessWidget {
                       const SizedBox(height: 16),
                       
                       // Volume Slider
-                      _buildVolumeSlider(context, settings, metronomeProvider),
+                      _buildVolumeSlider(context, settings, metronomeProvider, isPreviewing),
                     ],
                   ),
                 ),
@@ -234,7 +256,7 @@ class MetronomeSettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildVolumeSlider(BuildContext context, MetronomeSettings settings, MetronomeProvider provider) {
+  Widget _buildVolumeSlider(BuildContext context, MetronomeSettings settings, MetronomeProvider provider, bool isPreviewing) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -284,12 +306,13 @@ class MetronomeSettingsPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            // Preview metronome button
+            // Preview metronome toggle button
             _buildCompactPreviewButton(
-              'Preview',
-              Icons.play_arrow,
-              () => provider.previewMetronome(),
+              isPreviewing ? 'Stop' : 'Preview',
+              isPreviewing ? Icons.stop : Icons.play_arrow,
+              () => provider.togglePreview(),
               enabled: settings.isEnabled,
+              isActive: isPreviewing,
             ),
           ],
         ),
@@ -302,7 +325,7 @@ class MetronomeSettingsPanel extends StatelessWidget {
     String label,
     IconData icon,
     VoidCallback onPressed,
-    {required bool enabled}
+    {required bool enabled, bool isActive = false}
   ) {
     return Material(
       color: Colors.transparent,
@@ -312,12 +335,18 @@ class MetronomeSettingsPanel extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: enabled 
-                ? Colors.white.withValues(alpha: 0.1) 
-                : Colors.white.withValues(alpha: 0.05),
+            color: isActive
+                ? Colors.blue.withValues(alpha: 0.3)
+                : enabled
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: enabled ? Colors.white30 : Colors.white10,
+              color: isActive
+                  ? Colors.blue
+                  : enabled
+                      ? Colors.white30
+                      : Colors.white10,
               width: 1,
             ),
           ),
@@ -326,14 +355,22 @@ class MetronomeSettingsPanel extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: enabled ? Colors.white : Colors.white30,
+                color: isActive
+                    ? Colors.blue
+                    : enabled
+                        ? Colors.white
+                        : Colors.white30,
                 size: 16,
               ),
               const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: enabled ? Colors.white70 : Colors.white30,
+                  color: isActive
+                      ? Colors.white
+                      : enabled
+                          ? Colors.white70
+                          : Colors.white30,
                   fontSize: 11,
                 ),
               ),

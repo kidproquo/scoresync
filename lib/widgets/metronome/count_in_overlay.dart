@@ -66,6 +66,11 @@ class _CountInOverlayState extends State<CountInOverlay>
 
   @override
   Widget build(BuildContext context) {
+    // Don't show anything if currentBeat is 0 or negative
+    if (widget.currentBeat <= 0) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       color: Colors.black.withValues(alpha: 0.7),
       child: Center(

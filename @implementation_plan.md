@@ -381,3 +381,15 @@ lib/
   - Added user feedback via orange SnackBar when duplicate detected
   - Shows existing sync point time to help user understand the rejection
   - Prevents accidental double-taps and ensures distinct sync points
+- **Replaced custom metronome with professional metronome package**:
+  - Migrated from Timer-based implementation to metronome package v2.0.6 for lower latency
+  - Removed complex beat tracking and visual indicators to minimize latency
+  - Simplified MetronomeProvider from 309 to 242 lines of code
+  - Maintained count-in functionality with beat tracking only during count-in sequence
+  - Removed MetronomeIndicator widget entirely as part of optimization
+  - Fixed off-by-1 beat counting issue in count-in overlay
+  - Modified CountInOverlay to hide when currentBeat is 0 or negative
+  - Changed preview button to play/stop toggle for continuous metronome testing
+  - Preview now runs continuously with current settings and auto-updates when changed
+  - Preview automatically stops when settings panel closes or metronome disabled
+  - Changed metronome sounds to claves44_wav.wav (accent) and woodblock_high44_wav.wav (regular clicks)

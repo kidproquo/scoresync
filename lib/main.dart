@@ -602,8 +602,8 @@ class _MainScreenState extends State<MainScreen> {
           curve: Curves.easeInOut,
           bottom: 80,
           right: 20,
-          width: 320,
-          height: 180, // 16:9 aspect ratio (320/16*9=180)
+          width: 240, // 3/4 of 320
+          height: 135, // 3/4 of 180, maintains 16:9 aspect ratio
           child: Container(
             decoration: BoxDecoration(
               color: Colors.black,
@@ -1098,6 +1098,8 @@ class NoSongPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final songProvider = context.read<SongProvider>();
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1122,15 +1124,116 @@ class NoSongPlaceholder extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              // The SongMenu in the AppBar will handle song creation
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Use the menu icon to create a song'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _showNewSongDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('New Song'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: songProvider.songs.isNotEmpty 
+                    ? () => _showLoadSongDialog(context)
+                    : null,
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Load Song'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  void _showNewSongDialog(BuildContext context) {
+    final controller = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Song'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter a name for your new song:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Song Name',
+                hintText: 'Enter song name',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+              onSubmitted: (value) async {
+                if (value.trim().isNotEmpty) {
+                  await _createNewSong(context, value.trim());
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                await _createNewSong(context, name);
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoadSongDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const LoadSongDialog(),
+    );
+  }
+
+  Future<void> _createNewSong(BuildContext context, String name) async {
+    try {
+      final songProvider = context.read<SongProvider>();
+      
+      // Check if song already exists
+      final exists = await SongStorageService.instance.songExists(name);
+      if (exists) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Song "$name" already exists')),
+          );
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        await songProvider.createNewSong(name);
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating song: $e')),
+        );
+      }
+    }
   }
 }

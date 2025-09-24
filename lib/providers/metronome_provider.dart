@@ -167,7 +167,7 @@ class MetronomeProvider extends ChangeNotifier {
     _currentBeat = 0;
     _isCountingIn = false;
     notifyListeners();
-    
+
     developer.log('Metronome stopped');
   }
 

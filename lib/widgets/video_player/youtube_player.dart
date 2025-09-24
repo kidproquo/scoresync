@@ -36,6 +36,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   Timer? _positionTimer;
   VideoProvider? _videoProvider;
   bool _showCountIn = false;
+  Timer? _countInTimer;
 
   @override
   void didChangeDependencies() {
@@ -49,12 +50,14 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   void dispose() {
     _loadingTimeout?.cancel();
     _positionTimer?.cancel();
+    _countInTimer?.cancel();
     
     // Clear all callbacks first to prevent future calls using stored reference
     _videoProvider?.setSeekToCallback(null);
     _videoProvider?.setPlayCallback(null);
     _videoProvider?.setPauseCallback(null);
     _videoProvider?.setForcePauseCallback(null);
+
     
     if (_controller != null) {
       try {
@@ -70,21 +73,18 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _loadVideo(String url) {
     // Don't reload if it's the same URL and controller exists
-    if (_currentUrl == url && _controller != null) {
+    if (_currentUrl == url && _controller != null && !_isLoading) {
       developer.log('Video already loaded: $url');
       return;
     }
     
-    // Prevent loading if already loading the same URL
-    if (_isLoading && _currentUrl == url) {
-      developer.log('Already loading video: $url');
+    // Prevent multiple simultaneous loads
+    if (_isLoading) {
+      developer.log('Already loading video, ignoring new request: $url');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    developer.log('Loading YouTube video: $url');
 
     try {
       final videoId = YoutubePlayer.convertUrlToId(url);
@@ -96,24 +96,21 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         return;
       }
 
-      // Properly dispose of existing controller before creating new one
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // Stop any existing timers first
+      _loadingTimeout?.cancel();
+      _positionTimer?.cancel();
+
+      // If controller exists, dispose it safely
       if (_controller != null) {
-        // Clear all callbacks to prevent calls to disposed controller
-        _videoProvider?.setSeekToCallback(null);
-        _videoProvider?.setPlayCallback(null);
-        _videoProvider?.setPauseCallback(null);
-        _videoProvider?.setForcePauseCallback(null);
+        _disposeCurrentController();
         
-        try {
-          _controller!.removeListener(_onPlayerStateChanged);
-          _controller!.dispose();
-        } catch (e) {
-          developer.log('Error disposing previous controller: $e');
-        }
-        _controller = null;
-        
-        // Small delay to ensure cleanup is complete
-        Future.delayed(const Duration(milliseconds: 200), () {
+        // Wait for disposal to complete before creating new controller
+        Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
             _createController(videoId, url);
           }
@@ -121,8 +118,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       } else {
         _createController(videoId, url);
       }
-
-      developer.log('Loading YouTube video: $url');
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading video: $e';
@@ -132,70 +127,125 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     }
   }
 
-  void _createController(String videoId, String url) {
-    developer.log('Creating new controller for video: $url');
+  void _disposeCurrentController() {
+    if (_controller == null) return;
     
-    // Cancel any existing timeout
-    _loadingTimeout?.cancel();
+    developer.log('Disposing current controller');
     
-    _controller = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-        enableCaption: false,
-        hideThumbnail: true,
-        showLiveFullscreenButton: false,
-        hideControls: true,  // Hide YouTube's default controls
-        disableDragSeek: true,  // Disable seeking by dragging
-      ),
-    );
+    // Clear all callbacks immediately to prevent future calls
+    _videoProvider?.setSeekToCallback(null);
+    _videoProvider?.setPlayCallback(null);
+    _videoProvider?.setPauseCallback(null);
+    _videoProvider?.setForcePauseCallback(null);
 
-    _controller!.addListener(_onPlayerStateChanged);
-
-    setState(() {
-      _currentUrl = url;
+    
+    try {
+      // Remove listener before disposing
+      _controller!.removeListener(_onPlayerStateChanged);
+      _controller!.dispose();
+    } catch (e) {
+      developer.log('Error disposing controller: $e');
+    } finally {
+      _controller = null;
       _isPlayerReady = false;
       _isPlaying = false;
       _currentPosition = Duration.zero;
       _totalDuration = Duration.zero;
       _playbackRate = 1.0;
-      _isLoading = false;
-    });
+    }
+  }
 
-    // Set up VideoProvider callbacks using stored reference
-    _videoProvider?.setSeekToCallback(_onSeek);
-    _videoProvider?.setPlayCallback(() {
-      if (!_isPlaying) _onPlayPause();
-    });
-    _videoProvider?.setPauseCallback(() {
-      if (_isPlaying) _onPlayPause();
-    });
-    _videoProvider?.setForcePauseCallback(() {
-      // Always pause regardless of current state
-      if (_controller != null && _isPlayerReady) {
-        _controller!.pause();
-        final metronomeProvider = context.read<MetronomeProvider>();
-        metronomeProvider.stopMetronome();
-        developer.log('Force pause executed - video should be paused');
-      }
-    });
+  void _createController(String videoId, String url) {
+    // Ensure we're not already creating a controller
+    if (_controller != null) {
+      developer.log('Controller already exists, not creating new one');
+      return;
+    }
+    
+    developer.log('Creating new controller for video: $url');
+    
+    try {
+      // Cancel any existing timeout
+      _loadingTimeout?.cancel();
+      
+      _controller = YoutubePlayerController(
+        initialVideoId: videoId,
+        flags: const YoutubePlayerFlags(
+          autoPlay: false,
+          mute: false,
+          enableCaption: false,
+          hideThumbnail: true,
+          showLiveFullscreenButton: false,
+          hideControls: true,  // Hide YouTube's default controls
+          disableDragSeek: true,  // Disable seeking by dragging
+        ),
+      );
 
-    // Set a timeout to handle cases where player never becomes ready
-    _loadingTimeout = Timer(const Duration(seconds: 10), () {
-      if (mounted && !_isPlayerReady && _currentUrl == url) {
-        developer.log('YouTube player loading timeout for: $url');
+      // Add listener only if controller was created successfully
+      _controller!.addListener(_onPlayerStateChanged);
+
+      // Update state only if mounted
+      if (mounted) {
         setState(() {
-          _errorMessage = 'Video failed to load. Please check the URL or try again.';
+          _currentUrl = url;
+          _isPlayerReady = false;
+          _isPlaying = false;
+          _currentPosition = Duration.zero;
+          _totalDuration = Duration.zero;
+          _playbackRate = 1.0;
+          _isLoading = false;
+        });
+
+        // Set up VideoProvider callbacks using stored reference - but only if still mounted
+        _videoProvider?.setSeekToCallback(_onSeek);
+        _videoProvider?.setPlayCallback(() {
+          if (mounted && _controller != null && !_isPlaying) _onPlayPause();
+        });
+        _videoProvider?.setPauseCallback(() {
+          if (mounted && _controller != null && _isPlaying) _onPlayPause();
+        });
+        _videoProvider?.setForcePauseCallback(() {
+          // Always pause regardless of current state
+          if (mounted && _controller != null && _isPlayerReady) {
+            try {
+              _controller!.pause();
+              final metronomeProvider = context.read<MetronomeProvider>();
+              metronomeProvider.stopMetronome();
+              developer.log('Force pause executed - video should be paused');
+            } catch (e) {
+              developer.log('Error in force pause: $e');
+            }
+          }
+        });
+
+
+        // Set a timeout to handle cases where player never becomes ready
+        _loadingTimeout = Timer(const Duration(seconds: 10), () {
+          if (mounted && !_isPlayerReady && _currentUrl == url) {
+            developer.log('YouTube player loading timeout for: $url');
+            setState(() {
+              _errorMessage = 'Video failed to load. Please check the URL or try again.';
+              _isLoading = false;
+            });
+          }
+        });
+
+        // Save video URL to current song
+        final songProvider = context.read<SongProvider>();
+        if (songProvider.currentSong != null) {
+          songProvider.updateSongVideoUrl(url);
+        }
+      }
+      
+      developer.log('Controller created successfully for: $url');
+    } catch (e) {
+      developer.log('Error creating controller: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error creating video player: $e';
           _isLoading = false;
         });
       }
-    });
-
-    // Save video URL to current song
-    final songProvider = context.read<SongProvider>();
-    if (songProvider.currentSong != null) {
-      songProvider.updateSongVideoUrl(url);
     }
   }
 
@@ -203,29 +253,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     _loadingTimeout?.cancel();
     _stopPositionTracking();
     
-    // Clear all video provider callbacks first
-    _videoProvider?.setSeekToCallback(null);
-    _videoProvider?.setPlayCallback(null);
-    _videoProvider?.setPauseCallback(null);
-    _videoProvider?.setForcePauseCallback(null);
-    
-    if (_controller != null) {
-      try {
-        _controller!.removeListener(_onPlayerStateChanged);
-        _controller!.dispose();
-      } catch (e) {
-        developer.log('Error disposing controller in clear: $e');
-      }
-      _controller = null;
-    }
+    // Use the new disposal method
+    _disposeCurrentController();
 
     setState(() {
       _currentUrl = '';
-      _isPlayerReady = false;
-      _isPlaying = false;
-      _currentPosition = Duration.zero;
-      _totalDuration = Duration.zero;
-      _playbackRate = 1.0;
       _errorMessage = null;
       _isLoading = false;
     });
@@ -268,55 +300,64 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   }
 
   void _onPlayerStateChanged() {
+    // Extra safety checks to prevent using disposed controller
     if (_controller == null || !mounted) return;
-
+    
     try {
       final wasReady = _isPlayerReady;
       final wasPlaying = _isPlaying;
       final isNowReady = _controller!.value.isReady;
       final isNowPlaying = _controller!.value.isPlaying;
       
-      setState(() {
-        _isPlayerReady = isNowReady;
-        _isPlaying = isNowPlaying;
-        _currentPosition = _controller!.value.position;
-        _totalDuration = _controller!.metadata.duration;
-      });
+      // Only update state if we're still mounted and controller is valid
+      if (mounted && _controller != null) {
+        setState(() {
+          _isPlayerReady = isNowReady;
+          _isPlaying = isNowPlaying;
+          _currentPosition = _controller!.value.position;
+          _totalDuration = _controller!.metadata.duration;
+        });
 
-      // Position update handled silently
+        // Update VideoProvider with current state only if still mounted
+        if (mounted) {
+          final videoProvider = context.read<VideoProvider>();
+          videoProvider.setPlayerReady(isNowReady);
+          videoProvider.setPlaying(_isPlaying);
+          videoProvider.setCurrentPosition(_currentPosition);
+          videoProvider.setTotalDuration(_totalDuration);
+        }
+        
+        if (!wasReady && isNowReady) {
+          developer.log('YouTube player ready - controls enabled');
+        }
 
-      // Update VideoProvider with current state
-      final videoProvider = context.read<VideoProvider>();
-      videoProvider.setPlayerReady(isNowReady);
-      videoProvider.setPlaying(_isPlaying);
-      videoProvider.setCurrentPosition(_currentPosition);
-      videoProvider.setTotalDuration(_totalDuration);
-      
-      if (!wasReady && isNowReady) {
-        developer.log('YouTube player ready - controls enabled');
-      }
-
-      // Handle metronome integration when play state changes
-      if (wasPlaying != isNowPlaying) {
-        developer.log('Play state changed: wasPlaying=$wasPlaying, isNowPlaying=$isNowPlaying');
-        _handleMetronomeStateChange(isNowPlaying);
-      }
-      
-      // Start or stop position tracking based on playing state
-      if (_isPlaying && _positionTimer == null) {
-        _startPositionTracking();
-      } else if (!_isPlaying && _positionTimer != null) {
-        _stopPositionTracking();
+        // Handle metronome integration when play state changes
+        if (wasPlaying != isNowPlaying) {
+          developer.log('Play state changed: wasPlaying=$wasPlaying, isNowPlaying=$isNowPlaying');
+          _handleMetronomeStateChange(isNowPlaying);
+        }
+        
+        // Start or stop position tracking based on playing state
+        if (_isPlaying && _positionTimer == null) {
+          _startPositionTracking();
+        } else if (!_isPlaying && _positionTimer != null) {
+          _stopPositionTracking();
+        }
       }
     } catch (e) {
       developer.log('Error in player state change: $e');
+      // If we get an error, the controller might be disposed
+      if (e.toString().contains('disposed')) {
+        developer.log('Controller was disposed, clearing reference');
+        _controller = null;
+      }
     }
   }
 
   void _handleMetronomeStateChange(bool isPlaying) {
     try {
       final metronomeProvider = context.read<MetronomeProvider>();
-      
+
       if (!isPlaying && metronomeProvider.isPlaying) {
         // Video was paused by some other means (e.g., clicking YouTube player)
         // Stop the metronome
@@ -331,7 +372,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _onPlayPause() {
     if (_controller == null || !_isPlayerReady || !mounted) return;
-    
+
     try {
       developer.log('_onPlayPause called: isPlaying=$_isPlaying');
       if (_isPlaying) {
@@ -340,6 +381,16 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         _controller!.pause();
         final metronomeProvider = context.read<MetronomeProvider>();
         metronomeProvider.stopMetronome();
+
+        // Cancel any pending count-in timer
+        _countInTimer?.cancel();
+        _countInTimer = null;
+
+        if (_showCountIn) {
+          setState(() {
+            _showCountIn = false;
+          });
+        }
       } else {
         // Start playing with metronome
         developer.log('Starting playback');
@@ -352,36 +403,49 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _startPlayback() {
     try {
+      // Cancel any existing count-in timer first
+      _countInTimer?.cancel();
+      _countInTimer = null;
+
       final metronomeProvider = context.read<MetronomeProvider>();
-      
+
       if (metronomeProvider.settings.isEnabled) {
         // Set playback rate before starting metronome
         metronomeProvider.setPlaybackRate(_playbackRate);
-        
+
         // Start metronome first
         developer.log('Starting metronome with playback rate: $_playbackRate');
         metronomeProvider.startMetronome();
-        
+
         if (metronomeProvider.settings.countInEnabled) {
           // Show count-in overlay
           setState(() {
             _showCountIn = true;
           });
-          
+
           // Wait for 1 measure before starting video (using effective BPM)
           final effectiveBPM = (metronomeProvider.settings.bpm * _playbackRate).round();
           final measureDuration = Duration(
             milliseconds: (60000 / effectiveBPM * metronomeProvider.settings.timeSignature.numerator).round(),
           );
           developer.log('Count-in enabled: waiting ${measureDuration.inMilliseconds}ms before starting video (effective BPM: $effectiveBPM)');
-          
-          Future.delayed(measureDuration, () {
-            if (mounted && _controller != null && _isPlayerReady) {
+
+          _countInTimer = Timer(measureDuration, () {
+            if (mounted && _controller != null && _isPlayerReady && metronomeProvider.isPlaying) {
               developer.log('Count-in complete, starting video');
               setState(() {
                 _showCountIn = false;
               });
               _controller!.play();
+              _countInTimer = null;
+            } else {
+              developer.log('Count-in cancelled: mounted=$mounted, controller=${_controller != null}, ready=$_isPlayerReady, metronome=${metronomeProvider.isPlaying}');
+              if (_showCountIn) {
+                setState(() {
+                  _showCountIn = false;
+                });
+              }
+              _countInTimer = null;
             }
           });
         } else {
@@ -595,16 +659,18 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         // Check if we need to load a video URL from VideoProvider
         if (hasSong && videoProvider.hasVideo && videoProvider.currentUrl != _currentUrl && !_isLoading) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && videoProvider.currentUrl != _currentUrl) {
+            if (mounted && videoProvider.currentUrl != _currentUrl && !_isLoading) {
               developer.log('VideoProvider URL changed, loading: ${videoProvider.currentUrl}');
               _loadVideo(videoProvider.currentUrl);
             }
           });
-        } else if (hasSong && !videoProvider.hasVideo && _currentUrl.isNotEmpty) {
-          // Clear video if song has no video URL
+        } else if (hasSong && !videoProvider.hasVideo && _currentUrl.isNotEmpty && 
+                   songProvider.currentSong?.videoUrl?.isEmpty == true) {
+          // Only clear video if BOTH VideoProvider has no video AND the song has no video URL
+          // This prevents race condition where user loads video but song hasn't been updated yet
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              developer.log('Song has no video URL, clearing player');
+            if (mounted && !_isLoading && !videoProvider.hasVideo) {
+              developer.log('Song and VideoProvider have no video URL, clearing player');
               _clearVideo();
             }
           });
@@ -664,19 +730,19 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                       )
                     : _buildPlayer(),
               ),
-              // Count-in overlay (only show during count-in)
-              if (_showCountIn)
-                Positioned.fill(
-                  child: Consumer<MetronomeProvider>(
-                    builder: (context, metronomeProvider, _) {
-                      return CountInOverlay(
-                        currentBeat: metronomeProvider.currentBeat,
-                        totalBeats: metronomeProvider.settings.timeSignature.numerator,
-                      );
-                    },
+                // Count-in overlay (only show during count-in)
+                if (_showCountIn)
+                  Positioned.fill(
+                    child: Consumer<MetronomeProvider>(
+                      builder: (context, metronomeProvider, _) {
+                        return CountInOverlay(
+                          currentBeat: metronomeProvider.currentBeat,
+                          totalBeats: metronomeProvider.settings.timeSignature.numerator,
+                        );
+                      },
+                    ),
                   ),
-                ),
-              // Minimal controls overlay (always visible in overlay mode)
+                // Minimal controls overlay (always visible in overlay mode)
               if (widget.showGuiControls && _isPlayerReady)
                 Positioned(
                   left: 0,

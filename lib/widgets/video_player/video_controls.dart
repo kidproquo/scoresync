@@ -252,22 +252,6 @@ class _VideoControlsState extends State<VideoControls> {
                       ],
                     ),
               if (!isPlaybackMode) const Spacer(),
-              if (isPlaybackMode && widget.isDesignMode)
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isEditingUrl = !_isEditingUrl;
-                    });
-                  },
-                  icon: Icon(
-                    _isEditingUrl ? Icons.close : Icons.edit,
-                    color: iconColor,
-                    size: 18,
-                  ),
-                  tooltip: _isEditingUrl ? 'Cancel' : 'Change URL',
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                ),
               if (widget.isPlayerReady)
                 isPlaybackMode
                     ? PopupMenuButton<double>(

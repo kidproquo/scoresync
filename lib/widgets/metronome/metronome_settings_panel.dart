@@ -297,50 +297,6 @@ class MetronomeSettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewButton(
-    String label,
-    IconData icon,
-    VoidCallback onPressed,
-    {required bool enabled}
-  ) {
-    return Column(
-      children: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: enabled ? onPressed : null,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: enabled 
-                    ? Colors.white.withValues(alpha: 0.1) 
-                    : Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: enabled ? Colors.white30 : Colors.white10,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                icon,
-                color: enabled ? Colors.white : Colors.white30,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: enabled ? Colors.white70 : Colors.white30,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildCompactPreviewButton(
     String label,

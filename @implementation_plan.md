@@ -349,3 +349,16 @@ lib/
   - Added `previewMetronome()` method that plays one complete measure using current settings (BPM, time signature, volume, accent pattern)
   - Volume setting already properly saved per song as part of MetronomeSettings persistence
   - Fixed `await` usage on void functions in MetronomeProvider preview methods
+- **Fixed metronome synchronization issues**:
+  - Added proper count-in timer management with `_countInTimer` to track and cancel count-in sequences
+  - Implemented count-in cancellation when metronome stops or user pauses during count-in
+  - Added state checks to ensure video only starts if metronome is still playing after count-in
+  - Fixed memory leaks by properly disposing timers and callbacks in dispose methods
+  - Improved error handling and logging for count-in and video start sequences
+  - Note: Reverted autoplay restriction handling changes as they need further investigation
+- **Reduced video overlay window size in playback mode**:
+  - Changed video overlay dimensions from 320×180 to 240×135 (3/4 of original size)
+  - Maintained 16:9 aspect ratio for proper video display
+  - Modified AnimatedPositioned widget in main.dart to control actual window size
+  - Video player now fills the entire reduced window without black bars
+  - Overlay position (bottom: 80, right: 20) remains unchanged

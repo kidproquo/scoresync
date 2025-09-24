@@ -341,3 +341,11 @@ lib/
   - Updated count-in timing to match effective BPM for synchronized video start
   - Metronome automatically restarts with new tempo when playback rate changes
   - Enhanced logging to show both base BPM and effective BPM for debugging
+- **Enhanced metronome settings panel with better UX**:
+  - Restored page controls in design mode (previously removed by mistake during code cleanup)
+  - Fixed metronome settings panel height from 320px to 420px to show all content including volume controls
+  - Replaced separate "Normal" and "Accent" preview buttons with single "Preview" button
+  - Implemented compact volume slider and preview button layout on same row for better space utilization
+  - Added `previewMetronome()` method that plays one complete measure using current settings (BPM, time signature, volume, accent pattern)
+  - Volume setting already properly saved per song as part of MetronomeSettings persistence
+  - Fixed `await` usage on void functions in MetronomeProvider preview methods

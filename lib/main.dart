@@ -871,10 +871,10 @@ class _MainScreenState extends State<MainScreen> {
         AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          bottom: _showMetronomeSettings ? 0 : -400,
+          bottom: _showMetronomeSettings ? 0 : -500,
           left: 0,
           right: 0,
-          height: 400,
+          height: 500,
           child: MetronomeSettingsPanel(
             onClose: () {
               setState(() {
@@ -947,7 +947,32 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
             ),
-            child: const ScoreViewer(),
+            child: Column(
+              children: [
+                const Expanded(
+                  child: ScoreViewer(),
+                ),
+                // Page controls at bottom in design mode
+                Consumer2<ScoreProvider, SongProvider>(
+                  builder: (context, scoreProvider, songProvider, _) {
+                    if (scoreProvider.selectedPdfFile != null && scoreProvider.totalPages > 0) {
+                      return PageControls(
+                        currentPage: scoreProvider.currentPageNumber,
+                        totalPages: scoreProvider.totalPages,
+                        onFirstPage: () => _goToFirstPage(context),
+                        onPreviousPage: () => _goToPreviousPage(context),
+                        onNextPage: () => _goToNextPage(context),
+                        onLastPage: () => _goToLastPage(context),
+                        onSelectPdf: () => _pickPdfFile(context),
+                        canSelectPdf: songProvider.currentSong != null,
+                        isDesignMode: true,
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(

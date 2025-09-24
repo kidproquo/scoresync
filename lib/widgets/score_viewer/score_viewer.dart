@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/song_provider.dart';
-import 'page_controls.dart';
 import 'rectangle_overlay.dart';
 
 class ScoreViewer extends StatefulWidget {
@@ -131,33 +130,6 @@ class _ScoreViewerState extends State<ScoreViewer> {
     developer.log('PDF load failed: ${details.error}');
   }
 
-  void _goToFirstPage() {
-    final scoreProvider = context.read<ScoreProvider>();
-    if (_pdfViewerController != null && scoreProvider.totalPages > 0) {
-      _pdfViewerController!.jumpToPage(1);
-    }
-  }
-
-  void _goToLastPage() {
-    final scoreProvider = context.read<ScoreProvider>();
-    if (_pdfViewerController != null && scoreProvider.totalPages > 0) {
-      _pdfViewerController!.jumpToPage(scoreProvider.totalPages);
-    }
-  }
-
-  void _goToPreviousPage() {
-    final scoreProvider = context.read<ScoreProvider>();
-    if (_pdfViewerController != null && scoreProvider.canGoToPreviousPage()) {
-      _pdfViewerController!.previousPage();
-    }
-  }
-
-  void _goToNextPage() {
-    final scoreProvider = context.read<ScoreProvider>();
-    if (_pdfViewerController != null && scoreProvider.canGoToNextPage()) {
-      _pdfViewerController!.nextPage();
-    }
-  }
 
   Widget _buildPdfViewer(ScoreProvider scoreProvider, bool isDesignMode) {
     developer.log('_buildPdfViewer: hasFile=${scoreProvider.selectedPdfFile != null}, error=${scoreProvider.errorMessage}, isDesignMode=$isDesignMode');

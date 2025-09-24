@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
 import 'dart:async';
 import 'dart:developer' as developer;
 import '../models/metronome_settings.dart';
@@ -10,6 +11,11 @@ class MetronomeProvider extends ChangeNotifier {
   int _currentBeat = 0;
   bool _isCountingIn = false;
   double _playbackRate = 1.0; // Add playback rate
+  
+  // Audio players for metronome sounds
+  AudioPlayer? _accentPlayer;
+  AudioPlayer? _normalPlayer;
+  bool _audioInitialized = false;
   
   // Callbacks
   Function(int beat)? _onBeat;
@@ -26,11 +32,24 @@ class MetronomeProvider extends ChangeNotifier {
 
   Future<void> _initializeAudio() async {
     try {
-      // We'll use system sounds directly instead of loading audio files
-      // This ensures we always have working sounds
-      developer.log('Metronome audio initialized with system sounds');
+      // Initialize audio players for accent and normal beats
+      _accentPlayer = AudioPlayer();
+      _normalPlayer = AudioPlayer();
+      
+      // Load metronome sound files
+      await _accentPlayer!.setAsset('assets/Synth_Tick_D_hi.wav'); // Higher pitch for accent
+      await _normalPlayer!.setAsset('assets/Synth_Tick_C_hi.wav'); // Normal pitch for regular beats
+      
+      // Set volume based on settings
+      await _accentPlayer!.setVolume(_settings.volume);
+      await _normalPlayer!.setVolume(_settings.volume);
+      
+      _audioInitialized = true;
+      developer.log('Metronome audio initialized with custom WAV files');
     } catch (e) {
       developer.log('Error initializing metronome audio: $e');
+      developer.log('Falling back to system sounds');
+      _audioInitialized = false;
     }
   }
 
@@ -83,7 +102,12 @@ class MetronomeProvider extends ChangeNotifier {
   void setVolume(double volume) {
     final clampedVolume = volume.clamp(0.0, 1.0);
     updateSettings(_settings.copyWith(volume: clampedVolume));
-    // Note: System sounds don't support volume control
+    
+    // Update audio player volumes if initialized
+    if (_audioInitialized) {
+      _accentPlayer?.setVolume(clampedVolume);
+      _normalPlayer?.setVolume(clampedVolume);
+    }
   }
 
   void setCountInEnabled(bool enabled) {
@@ -180,17 +204,23 @@ class MetronomeProvider extends ChangeNotifier {
     developer.log('Count-in completed at $effectiveBPM effective BPM');
   }
 
-  void _playClick(bool isAccent) {
-    
-    // Use system sounds directly for reliable audio playback
+  void _playClick(bool isAccent) async {
     try {
-      // Use the same sound for all beats to ensure consistent timing
-      SystemSound.play(SystemSoundType.click);
-      
-      // Note: In a production app, you'd use different audio files for accent/normal beats
-      // but system sounds are limited, so we'll use volume or pitch differences instead
+      if (_audioInitialized && _accentPlayer != null && _normalPlayer != null) {
+        // Use custom WAV files for better sound quality
+        final player = isAccent ? _accentPlayer! : _normalPlayer!;
+        
+        // Reset to beginning and play
+        await player.seek(Duration.zero);
+        await player.play();
+      } else {
+        // Fallback to system sounds if custom audio failed to load
+        SystemSound.play(SystemSoundType.click);
+      }
     } catch (e) {
       developer.log('Error playing metronome sound: $e');
+      // Final fallback to system sound
+      SystemSound.play(SystemSoundType.click);
     }
   }
 
@@ -202,9 +232,78 @@ class MetronomeProvider extends ChangeNotifier {
     _onCountInBeat = callback;
   }
 
+  // Preview methods for testing sounds
+  Future<void> previewAccentSound() async {
+    _playClick(true);
+  }
+
+  Future<void> previewNormalSound() async {
+    _playClick(false);
+  }
+
+  // Preview metronome for a few beats
+  Timer? _previewTimer;
+  int _previewBeatCount = 0;
+  bool _isPreviewRunning = false;
+
+  void previewMetronome() {
+    if (!_settings.isEnabled || _isPreviewRunning) return;
+    
+    // Stop main metronome if running
+    final wasPlaying = isPlaying;
+    if (wasPlaying) {
+      stopMetronome();
+    }
+    
+    _isPreviewRunning = true;
+    _previewBeatCount = 0;
+    
+    // Play 4 beats (one measure) as preview
+    final beatDuration = Duration(
+      milliseconds: (60000 / _settings.bpm).round(),
+    );
+    
+    developer.log('Starting metronome preview: ${_settings.bpm} BPM, ${_settings.timeSignature.displayString}');
+    
+    // Play first beat immediately
+    _previewBeatCount = 1;
+    _playClick(true); // Accent on first beat
+    
+    // Schedule remaining beats
+    _previewTimer = Timer.periodic(beatDuration, (timer) {
+      _previewBeatCount++;
+      
+      if (_previewBeatCount > _settings.timeSignature.numerator) {
+        // Finished one measure, stop preview
+        _previewTimer?.cancel();
+        _previewTimer = null;
+        _isPreviewRunning = false;
+        developer.log('Metronome preview completed');
+        
+        // Restart main metronome if it was playing before
+        if (wasPlaying) {
+          startMetronome();
+        }
+        return;
+      }
+      
+      // Play accent on beat 1, normal click on other beats
+      _playClick(_previewBeatCount == 1);
+    });
+  }
+
   @override
   void dispose() {
     stopMetronome();
+    
+    // Cancel preview timer
+    _previewTimer?.cancel();
+    _previewTimer = null;
+    
+    // Dispose audio players
+    _accentPlayer?.dispose();
+    _normalPlayer?.dispose();
+    
     super.dispose();
   }
 }

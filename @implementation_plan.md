@@ -451,3 +451,14 @@ lib/
   - Added comprehensive overflow protection with maxLines and TextOverflow.ellipsis
   - Improved spacing and icon sizes for better layout within grid constraints
   - Enhanced text layout with mainAxisSize.min and flexible text wrapping
+- **Implemented smooth draggable video overlay**:
+  - Added full drag functionality to video overlay using GestureDetector with onPanUpdate
+  - Replaced problematic Draggable widget that caused video resets during drag operations
+  - Implemented smooth position tracking with _videoOverlayX and _videoOverlayY state variables
+  - Added intelligent boundary constraints to keep overlay within screen bounds during dragging
+  - Enhanced visual feedback with blue border and enhanced shadow effects during drag operations
+  - Preserved video playback state during dragging with ValueKey to prevent widget rebuilds
+  - Added double-tap gesture to reset overlay position to default location
+  - Integrated small drag indicator icon in top-right corner for better UX
+  - Responsive positioning that adapts to both portrait and landscape orientations
+  - Optimized performance by eliminating unnecessary widget rebuilds during drag operations

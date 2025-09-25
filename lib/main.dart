@@ -432,6 +432,11 @@ class _MainScreenState extends State<MainScreen> {
   bool _hasInitialized = false;
   bool _showMetronomeSettings = false;
 
+  // Video overlay position tracking
+  double? _videoOverlayX;
+  double? _videoOverlayY;
+  bool _isDragging = false;
+
   @override
   void dispose() {
     super.dispose();
@@ -538,39 +543,106 @@ class _MainScreenState extends State<MainScreen> {
                 child: const ScoreViewer(),
               ),
             ),
-            // Video player overlay (responsive to orientation)
-            Positioned(
-              bottom: isLandscape ? 80 : 160,  // Higher in portrait to avoid keyboard area
-              right: 20,  // Consistent right margin for both orientations
-              width: isLandscape
-                  ? (isPlaybackMode ? 240 : 420)  // Original sizes in landscape
-                  : (isPlaybackMode ? 280 : 320), // Smaller fixed widths in portrait
-              height: isLandscape
-                  ? (isPlaybackMode ? 135 : 280)  // Original heights in landscape
-                  : (isPlaybackMode ? 157 : 180), // Maintain 16:9 aspect ratio in portrait
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+            // Video player overlay (draggable, responsive to orientation)
+            Builder(
+              builder: (context) {
+                final screenSize = MediaQuery.of(context).size;
+                final overlayWidth = isLandscape
+                    ? (isPlaybackMode ? 240.0 : 420.0)  // Original sizes in landscape
+                    : (isPlaybackMode ? 280.0 : 320.0); // Smaller fixed widths in portrait
+                final overlayHeight = isLandscape
+                    ? (isPlaybackMode ? 135.0 : 280.0)  // Original heights in landscape
+                    : (isPlaybackMode ? 157.0 : 180.0); // Maintain 16:9 aspect ratio in portrait
+
+                // Calculate default position if not set
+                final defaultX = screenSize.width - overlayWidth - 20;
+                final defaultY = screenSize.height - overlayHeight - (isLandscape ? 80 : 160);
+
+                final currentX = _videoOverlayX ?? defaultX;
+                final currentY = _videoOverlayY ?? defaultY;
+
+                return Positioned(
+                  left: currentX,
+                  top: currentY,
+                  width: overlayWidth,
+                  height: overlayHeight,
+                  child: GestureDetector(
+                    onPanStart: (details) {
+                      setState(() {
+                        _isDragging = true;
+                      });
+                    },
+                    onPanUpdate: (details) {
+                      final screenSize = MediaQuery.of(context).size;
+                      final newX = (currentX + details.delta.dx).clamp(0.0, screenSize.width - overlayWidth);
+                      final newY = (currentY + details.delta.dy).clamp(0.0, screenSize.height - overlayHeight);
+
+                      setState(() {
+                        _videoOverlayX = newX;
+                        _videoOverlayY = newY;
+                      });
+                    },
+                    onPanEnd: (details) {
+                      setState(() {
+                        _isDragging = false;
+                      });
+                    },
+                    onDoubleTap: () {
+                      // Reset to default position on double tap
+                      setState(() {
+                        _videoOverlayX = null;
+                        _videoOverlayY = null;
+                      });
+                    },
+                    child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(8),
+                          border: _isDragging
+                              ? Border.all(color: Colors.blue.withValues(alpha: 0.8), width: 2)
+                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: _isDragging ? 0.8 : 0.5),
+                              blurRadius: _isDragging ? 15 : 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Stack(
+                            children: [
+                              // YouTube player - with key to prevent rebuilds during dragging
+                              YouTubePlayerWidget(
+                                key: const ValueKey('youtube_player_draggable'),
+                                showGuiControls: true,
+                              ),
+                              // Drag indicator
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(
+                                    Icons.drag_indicator,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),  // Stack
+                        ),      // ClipRRect
+                      ),        // Container
+                    ),          // GestureDetector
+                );              // Positioned
+              },
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Stack(
-                children: [
-                  // YouTube player
-                  YouTubePlayerWidget(showGuiControls: true),
-                ],
-              ),
-            ),
-          ),
-        ),
         // Floating app bar (always visible)
         Positioned(
           top: 0,

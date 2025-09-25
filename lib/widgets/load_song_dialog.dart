@@ -199,7 +199,7 @@ class _SongCard extends StatelessWidget {
           children: [
             // Music Icon
             Expanded(
-              flex: 2,  // Reduced from 3
+              flex: 1,  // Further reduced to give more space to text
               child: Container(
                 margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),  // Reduced bottom margin
                 decoration: BoxDecoration(
@@ -208,7 +208,7 @@ class _SongCard extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.music_note,
-                  size: 32,  // Reduced from 48
+                  size: 24,  // Further reduced icon size
                   color: song.pdfPath != null ? Colors.blue[600] : Colors.grey[400],
                 ),
               ),
@@ -221,40 +221,47 @@ class _SongCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),  // Reduced top padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Song name with current indicator
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            song.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,  // Increased back to 14
-                              color: isCurrentSong
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              song.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,  // Reduced font size to prevent overflow
+                                color: isCurrentSong
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              maxLines: 2,  // Allow 2 lines for longer names
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,  // Allow 2 lines for longer names
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        if (isCurrentSong)
-                          Icon(
-                            Icons.check_circle,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                      ],
+                          if (isCurrentSong)
+                            Icon(
+                              Icons.check_circle,
+                              size: 14,  // Reduced icon size
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    
+                    const SizedBox(height: 2),  // Reduced spacing
+
                     // Created date
-                    Text(
-                      _formatDate(song.createdAt),
-                      style: TextStyle(
-                        fontSize: 11,  // Slightly increased
-                        color: Colors.grey[600],
+                    Flexible(
+                      child: Text(
+                        _formatDate(song.createdAt),
+                        style: TextStyle(
+                          fontSize: 10,  // Reduced font size
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],

@@ -426,3 +426,28 @@ lib/
   - For narrow containers (< 300px), controls now use horizontal scrolling to prevent overflow
   - Removed AnimatedPositioned animation from video overlay to eliminate transition overflow
   - Video overlay now instantly snaps to correct size instead of animating, preventing intermediate overflow states
+- **Added comprehensive orientation support**:
+  - Updated iOS Info.plist to support both portrait and landscape orientations
+  - Modified Android manifest from landscape-only to unspecified orientation
+  - Enhanced Flutter main.dart to allow all device orientations (portrait up/down, landscape left/right)
+  - Made video overlay responsive to orientation with different positioning and sizes
+  - Portrait mode: 320×180px (design) / 280×157px (playback) with 20px margins from right
+  - Landscape mode: maintains original 420×280px (design) / 240×135px (playback) sizing
+  - Fixed Positioned widget constraint conflicts by removing conflicting left/right/width combinations
+  - Adjusted video control overflow threshold to handle portrait mode container width (≤320px)
+- **Removed auto-hide functionality and improved transparency**:
+  - Eliminated all auto-hide timer logic and control visibility toggling
+  - Removed _showGuiControls state variable, Timer management, and tap-to-toggle functionality
+  - Made top and bottom control bars always visible in both design and playback modes
+  - Updated top bar to use simple Positioned (no AnimatedPositioned or opacity animations)
+  - Updated bottom bar to use simple Positioned with consistent transparent gradient styling
+  - Made PageControls widget transparent by removing solid background and border
+  - Bottom bar now uses same gradient as top bar: Colors.black.withValues(alpha: 0.7) to transparent
+  - Controls are now permanently accessible for better user experience
+- **Fixed load song dialog overflow issues**:
+  - Resolved text overflow in song card layout using Flexible widgets and proper constraints
+  - Optimized song card proportions: reduced icon flex from 2 to 1, giving more space to text
+  - Reduced font sizes: song name from 14 to 12px, date from 11 to 10px for better fit
+  - Added comprehensive overflow protection with maxLines and TextOverflow.ellipsis
+  - Improved spacing and icon sizes for better layout within grid constraints
+  - Enhanced text layout with mainAxisSize.min and flexible text wrapping

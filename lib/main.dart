@@ -23,6 +23,8 @@ import 'services/song_storage_service.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]).then((_) {
@@ -427,49 +429,14 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  bool _showGuiControls = true;
-  Timer? _hideTimer;
   bool _hasInitialized = false;
   bool _showMetronomeSettings = false;
 
   @override
   void dispose() {
-    _hideTimer?.cancel();
     super.dispose();
   }
 
-  void _toggleGuiControls() {
-    final appModeProvider = context.read<AppModeProvider>();
-
-    setState(() {
-      _showGuiControls = !_showGuiControls;
-    });
-
-    // Only start timer in playback mode when controls are shown
-    if (_showGuiControls && appModeProvider.isPlaybackMode) {
-      _startHideTimer();
-    }
-  }
-
-  void _startHideTimer() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        final appModeProvider = context.read<AppModeProvider>();
-        // Only hide controls in playback mode
-        if (appModeProvider.isPlaybackMode) {
-          setState(() {
-            _showGuiControls = false;
-          });
-        }
-      }
-    });
-  }
-
-  void _onTap() {
-    // Toggle GUI controls (only called from fullscreen playback mode)
-    _toggleGuiControls();
-  }
 
   void _goToFirstPage(BuildContext context) {
     final scoreProvider = context.read<ScoreProvider>();
@@ -542,39 +509,12 @@ class _MainScreenState extends State<MainScreen> {
               if (mounted) {
                 setState(() {
                   _hasInitialized = true;
-                  // In design mode, keep controls always visible
-                  _showGuiControls = true;
                 });
-                // Only start timer in playback mode
-                if (isPlaybackMode) {
-                  _startHideTimer();
-                }
               }
             });
           });
         }
 
-        // Handle mode changes - show controls permanently in design mode
-        if (_hasInitialized) {
-          if (!isPlaybackMode && !_showGuiControls) {
-            // Switching to design mode - show controls and cancel timer
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _hideTimer?.cancel();
-                setState(() {
-                  _showGuiControls = true;
-                });
-              }
-            });
-          } else if (isPlaybackMode && _hideTimer == null) {
-            // Switching to playback mode - start auto-hide timer
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _startHideTimer();
-              }
-            });
-          }
-        }
 
         return Scaffold(
           // No fixed AppBar - it's part of the fullscreen layout now
@@ -585,38 +525,33 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildFullscreenLayout(bool isPlaybackMode, String songName) {
-    return Stack(
-      children: [
-        // Fullscreen score viewer
-        Positioned.fill(
-          child: Container(
-            key: const ValueKey('fullscreen_score_viewer'),
-            child: const ScoreViewer(),
-          ),
-        ),
-        // Tap overlay (only in playback mode when controls are hidden)
-        if (isPlaybackMode && !_showGuiControls)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _onTap,
-              behavior: HitTestBehavior.translucent,
-              child: Container(color: Colors.transparent),
+    return Builder(
+      builder: (context) {
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+        return Stack(
+          children: [
+            // Fullscreen score viewer
+            Positioned.fill(
+              child: Container(
+                key: const ValueKey('fullscreen_score_viewer'),
+                child: const ScoreViewer(),
+              ),
             ),
-          ),
-        // Video player overlay (always visible in fullscreen)
-        Positioned(
-          bottom: 80,
-          right: 20,
-          width: isPlaybackMode ? 240 : 420,  // Reduced width for better control balance
-          height: isPlaybackMode ? 135 : 280,  // Maintains aspect ratio and adds space for controls
+            // Video player overlay (responsive to orientation)
+            Positioned(
+              bottom: isLandscape ? 80 : 160,  // Higher in portrait to avoid keyboard area
+              right: 20,  // Consistent right margin for both orientations
+              width: isLandscape
+                  ? (isPlaybackMode ? 240 : 420)  // Original sizes in landscape
+                  : (isPlaybackMode ? 280 : 320), // Smaller fixed widths in portrait
+              height: isLandscape
+                  ? (isPlaybackMode ? 135 : 280)  // Original heights in landscape
+                  : (isPlaybackMode ? 157 : 180), // Maintain 16:9 aspect ratio in portrait
           child: Container(
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(8),
-              border: _showGuiControls ? null : Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1,
-              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.5),
@@ -630,31 +565,17 @@ class _MainScreenState extends State<MainScreen> {
               child: Stack(
                 children: [
                   // YouTube player
-                  YouTubePlayerWidget(showGuiControls: _showGuiControls),
-                  // Tap overlay for video area (only when controls are hidden)
-                  if (!_showGuiControls)
-                    Positioned.fill(
-                      child: GestureDetector(
-                        onTap: _onTap,
-                        behavior: HitTestBehavior.translucent,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
+                  YouTubePlayerWidget(showGuiControls: true),
                 ],
               ),
             ),
           ),
         ),
-        // Floating app bar (always visible in design mode, auto-hide in playback mode)
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          top: (_showGuiControls || !isPlaybackMode) ? 0 : -100,
+        // Floating app bar (always visible)
+        Positioned(
+          top: 0,
           left: 0,
           right: 0,
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: (_showGuiControls || !isPlaybackMode) ? 1.0 : 0.0,
             child: Container(
               height: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
               decoration: BoxDecoration(
@@ -832,12 +753,9 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
-        ),
-        // Page controls overlay at bottom (always visible in design mode, auto-hide in playback mode)
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          bottom: (_showGuiControls || !isPlaybackMode) ? 0 : -100,
+        // Page controls overlay at bottom (always visible)
+        Positioned(
+          bottom: 0,
           left: 0,
           right: 0,
           child: Consumer2<ScoreProvider, SongProvider>(
@@ -849,8 +767,7 @@ class _MainScreenState extends State<MainScreen> {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.8),
-                        Colors.black.withValues(alpha: 0.6),
+                        Colors.black.withValues(alpha: 0.7),
                         Colors.transparent,
                       ],
                     ),
@@ -888,7 +805,9 @@ class _MainScreenState extends State<MainScreen> {
             },
           ),
         ),
-      ],
+          ],
+        );
+      },
     );
   }
 

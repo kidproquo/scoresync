@@ -869,8 +869,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final controls = _buildDesignControls();
-                            // Use SingleChildScrollView for very narrow containers
-                            final isVeryNarrow = constraints.maxWidth < 300;
+                            // Use SingleChildScrollView for narrow containers
+                            final isVeryNarrow = constraints.maxWidth <= 320;
                             if (isVeryNarrow) {
                               return SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,

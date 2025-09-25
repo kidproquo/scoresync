@@ -478,3 +478,11 @@ lib/
   - Improved date text contrast by using Colors.grey[700] instead of Colors.grey[600]
   - Enhanced text layout with 2-line wrapping support for song names and optimized font sizes (13px name, 12px date)
   - Adjusted flex ratios: icon section reduced to flex 2, text section increased to flex 3 for better text space
+- **Fixed video overlay drag interference with rectangle interactions**:
+  - Created UiStateProvider to track global UI state, specifically video dragging status
+  - Added UiStateProvider to main app's MultiProvider configuration for global access
+  - Enhanced video overlay drag handlers to broadcast dragging state (onPanStart/onPanEnd)
+  - Updated InteractiveRectangleOverlay to use Consumer3 and listen to video dragging state
+  - Conditionally disabled all rectangle gesture handlers (onTapDown, onPanUpdate, onPanEnd) when video is being dragged
+  - Prevents rectangles from receiving unintended drag events during video overlay positioning
+  - Ensures clean separation between video dragging and rectangle manipulation in design mode

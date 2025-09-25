@@ -6,6 +6,7 @@ import '../../providers/rectangle_provider.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/video_provider.dart';
 import '../../providers/metronome_provider.dart';
+import '../../providers/ui_state_provider.dart';
 import 'rectangle_painter.dart';
 
 class InteractiveRectangleOverlay extends StatefulWidget {
@@ -239,9 +240,10 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<RectangleProvider, AppModeProvider>(
-      builder: (context, rectangleProvider, appModeProvider, _) {
+    return Consumer3<RectangleProvider, AppModeProvider, UiStateProvider>(
+      builder: (context, rectangleProvider, appModeProvider, uiStateProvider, _) {
         final isDesignMode = appModeProvider.isDesignMode;
+        final isVideoDragging = uiStateProvider.isVideoDragging;
         final rectangles = rectangleProvider.getRectanglesForPage(widget.currentPageNumber);
         
 
@@ -255,11 +257,11 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
                   : SystemMouseCursors.basic,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTapDown: (details) => _handleTapDown(details, rectangleProvider, isDesignMode),
-                onPanUpdate: isDesignMode
+                onTapDown: isVideoDragging ? null : (details) => _handleTapDown(details, rectangleProvider, isDesignMode),
+                onPanUpdate: (isDesignMode && !isVideoDragging)
                     ? (details) => _handlePanUpdate(details, rectangleProvider)
                     : null,
-                onPanEnd: isDesignMode
+                onPanEnd: (isDesignMode && !isVideoDragging)
                     ? (details) => _handlePanEnd(details, rectangleProvider)
                     : null,
                 child: Stack(

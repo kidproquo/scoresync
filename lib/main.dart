@@ -15,6 +15,7 @@ import 'providers/sync_provider.dart';
 import 'providers/rectangle_provider.dart';
 import 'providers/song_provider.dart';
 import 'providers/metronome_provider.dart';
+import 'providers/ui_state_provider.dart';
 import 'widgets/load_song_dialog.dart';
 import 'widgets/metronome/metronome_settings_panel.dart';
 import 'widgets/score_viewer/page_controls.dart';
@@ -46,6 +47,7 @@ class ScoreSyncApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RectangleProvider()),
         ChangeNotifierProvider(create: (_) => SongProvider()),
         ChangeNotifierProvider(create: (_) => MetronomeProvider()),
+        ChangeNotifierProvider(create: (_) => UiStateProvider()),
       ],
       child: MaterialApp(
         title: 'Score Sync',
@@ -568,9 +570,11 @@ class _MainScreenState extends State<MainScreen> {
                   height: overlayHeight,
                   child: GestureDetector(
                     onPanStart: (details) {
+                      final uiStateProvider = context.read<UiStateProvider>();
                       setState(() {
                         _isDragging = true;
                       });
+                      uiStateProvider.setVideoDragging(true);
                     },
                     onPanUpdate: (details) {
                       final screenSize = MediaQuery.of(context).size;
@@ -583,9 +587,11 @@ class _MainScreenState extends State<MainScreen> {
                       });
                     },
                     onPanEnd: (details) {
+                      final uiStateProvider = context.read<UiStateProvider>();
                       setState(() {
                         _isDragging = false;
                       });
+                      uiStateProvider.setVideoDragging(false);
                     },
                     onDoubleTap: () {
                       // Reset to default position on double tap

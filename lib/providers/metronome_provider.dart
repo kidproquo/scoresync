@@ -7,12 +7,12 @@ import '../models/metronome_settings.dart';
 class MetronomeProvider extends ChangeNotifier {
   MetronomeSettings _settings = MetronomeSettings();
   late Metronome _metronome;
+  late Metronome _countInMetronome;  // Separate instance for count-in
   int _currentBeat = 0;
   bool _isCountingIn = false;
   bool _isPlaying = false;
   bool _isPreviewing = false;
   double _playbackRate = 1.0;
-  Timer? _countInTimer;
 
   // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
@@ -25,6 +25,7 @@ class MetronomeProvider extends ChangeNotifier {
 
   MetronomeProvider() {
     _initializeMetronome();
+    _initializeCountInMetronome();
   }
 
   Future<void> _initializeMetronome() async {
@@ -38,11 +39,32 @@ class MetronomeProvider extends ChangeNotifier {
         bpm: _settings.bpm,
         volume: (_settings.volume * 100).round(), // Convert 0-1 to 0-100
         timeSignature: _settings.timeSignature.numerator,
+        enableTickCallback: false,  // No callback needed for regular metronome
       );
 
-      developer.log('Metronome initialized with custom WAV files');
+      developer.log('Main metronome initialized');
     } catch (e) {
       developer.log('Error initializing metronome: $e');
+    }
+  }
+
+  Future<void> _initializeCountInMetronome() async {
+    try {
+      _countInMetronome = Metronome();
+
+      // Initialize count-in metronome with same sounds as main metronome
+      await _countInMetronome.init(
+        'assets/woodblock_high44_wav.wav', // Regular click sound (beats 2, 3, 4)
+        accentedPath: 'assets/claves44_wav.wav', // Accent sound (beat 1)
+        bpm: _settings.bpm,
+        volume: (_settings.volume * 100).round(),
+        timeSignature: _settings.timeSignature.numerator,
+        enableTickCallback: false,  // No callback needed - using manual timing
+      );
+
+      developer.log('Count-in metronome initialized with same config as main');
+    } catch (e) {
+      developer.log('Error initializing count-in metronome: $e');
     }
   }
 
@@ -59,10 +81,16 @@ class MetronomeProvider extends ChangeNotifier {
 
     _settings = newSettings;
 
-    // Update metronome settings
-    _metronome.setBPM((_settings.bpm * _playbackRate).round());
+    // Update both metronome settings
+    final effectiveBPM = (_settings.bpm * _playbackRate).round();
+    _metronome.setBPM(effectiveBPM);
     _metronome.setVolume((_settings.volume * 100).round());
     _metronome.setTimeSignature(_settings.timeSignature.numerator);
+
+    // Update count-in metronome as well
+    _countInMetronome.setBPM(effectiveBPM);
+    _countInMetronome.setVolume((_settings.volume * 100).round());
+    _countInMetronome.setTimeSignature(_settings.timeSignature.numerator);
 
     notifyListeners();
 
@@ -134,8 +162,12 @@ class MetronomeProvider extends ChangeNotifier {
 
     developer.log('Starting metronome: BPM=${_settings.bpm}, playbackRate=$_playbackRate, effectiveBPM=$effectiveBPM, timeSignature=${_settings.timeSignature.displayString}');
 
-    // Update metronome with effective BPM
+    // Update metronome with all settings
     _metronome.setBPM(effectiveBPM);
+    _metronome.setTimeSignature(_settings.timeSignature.numerator);
+    _metronome.setVolume((_settings.volume * 100).round());
+
+    developer.log('Main metronome configured: BPM=$effectiveBPM, timeSignature=${_settings.timeSignature.numerator}, volume=${(_settings.volume * 100).round()}');
 
     // Start the metronome
     _metronome.play();
@@ -147,12 +179,11 @@ class MetronomeProvider extends ChangeNotifier {
 
   void stopMetronome() {
     _metronome.stop();
+    _countInMetronome.stop();
     _isPlaying = false;
     _isPreviewing = false;  // Also stop preview if running
     _currentBeat = 0;
     _isCountingIn = false;
-    _countInTimer?.cancel();
-    _countInTimer = null;
     notifyListeners();
 
     developer.log('Metronome stopped');
@@ -163,43 +194,67 @@ class MetronomeProvider extends ChangeNotifier {
       return;
     }
 
+    developer.log('Starting count-in sequence...');
+
     _isCountingIn = true;
+    _currentBeat = 0;
     notifyListeners();
 
     // Apply playback rate to count-in as well
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
-    final beatDuration = Duration(
-      milliseconds: (60000 / effectiveBPM).round(),
-    );
+    final totalBeats = _settings.timeSignature.numerator;
+    final beatDuration = Duration(milliseconds: (60000 / effectiveBPM).round());
 
-    // Use the metronome package for count-in beats
-    _metronome.setBPM(effectiveBPM);
-    _metronome.setTimeSignature(_settings.timeSignature.numerator);
+    developer.log('Setting up count-in for $totalBeats beats at $effectiveBPM BPM (${beatDuration.inMilliseconds}ms per beat)');
 
-    for (int beat = 1; beat <= _settings.timeSignature.numerator; beat++) {
-      if (!_isCountingIn) break; // Allow cancellation
+    // Configure count-in metronome with same settings
+    _countInMetronome.setBPM(effectiveBPM);
+    _countInMetronome.setTimeSignature(_settings.timeSignature.numerator);
+    _countInMetronome.setVolume((_settings.volume * 100).round());
 
-      // Set beat and notify BEFORE playing sound and delay
-      _currentBeat = beat;
-      _onCountInBeat?.call(beat);
-      notifyListeners();
+    try {
+      // Manual count-in with precise timing
+      for (int beat = 1; beat <= totalBeats; beat++) {
+        if (!_isCountingIn) break; // Allow cancellation
 
-      // Play one beat using the metronome
-      _metronome.play();
-      await Future.delayed(const Duration(milliseconds: 100)); // Brief play
-      _metronome.pause();
+        _currentBeat = beat;
+        _onCountInBeat?.call(beat);
+        notifyListeners();
 
-      // Wait for the rest of the beat duration
-      if (beat < _settings.timeSignature.numerator) {
+        developer.log('Count-in beat: $beat/$totalBeats');
+
+        // Play count-in metronome for this beat
+        _countInMetronome.play();
+        await Future.delayed(const Duration(milliseconds: 100)); // Brief play
+        _countInMetronome.pause();
+
+        // Wait for the rest of the beat
         await Future.delayed(beatDuration - const Duration(milliseconds: 100));
       }
+
+      // Count-in completed, but we're now AT the first beat of the next measure
+      _isCountingIn = false;
+      _currentBeat = 0;
+      notifyListeners();
+
+      developer.log('Count-in completed, starting main metronome and video on first beat of next measure');
+
+      // Start the main metronome - this is now the first beat of the next measure
+      if (_settings.isEnabled) {
+        developer.log('Starting main metronome after count-in...');
+        startMetronome();
+      }
+
+      // Also trigger the video start callback at this precise moment
+      _onCountInBeat?.call(0); // Special signal for "start now"
+
+      developer.log('Count-in completed, main metronome and video started on beat 1');
+    } catch (e) {
+      developer.log('Error during count-in: $e');
+      _isCountingIn = false;
+      _currentBeat = 0;
+      notifyListeners();
     }
-
-    _isCountingIn = false;
-    _currentBeat = 0;
-    notifyListeners();
-
-    developer.log('Count-in completed at $effectiveBPM effective BPM');
   }
 
   void setOnCountInBeatCallback(Function(int)? callback) {
@@ -225,7 +280,7 @@ class MetronomeProvider extends ChangeNotifier {
 
     developer.log('Starting metronome preview: ${_settings.bpm} BPM, ${_settings.timeSignature.displayString}');
 
-    // Configure and start metronome for preview
+    // Configure and start metronome for preview (use main metronome)
     _metronome.setBPM(_settings.bpm);
     _metronome.setTimeSignature(_settings.timeSignature.numerator);
     _metronome.setVolume((_settings.volume * 100).round());
@@ -241,6 +296,7 @@ class MetronomeProvider extends ChangeNotifier {
     if (!_isPreviewing) return;
 
     _metronome.stop();
+    _countInMetronome.stop();  // Also stop count-in if running
     _isPreviewing = false;
     notifyListeners();
 
@@ -269,7 +325,6 @@ class MetronomeProvider extends ChangeNotifier {
   void dispose() {
     stopMetronome();
     stopPreview();
-    _countInTimer?.cancel();
     super.dispose();
   }
 }

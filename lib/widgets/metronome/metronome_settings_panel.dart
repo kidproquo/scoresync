@@ -16,12 +16,20 @@ class MetronomeSettingsPanel extends StatefulWidget {
 }
 
 class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
+  MetronomeProvider? _metronomeProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Safely get provider reference
+    _metronomeProvider ??= context.read<MetronomeProvider>();
+  }
+
   @override
   void dispose() {
-    // Stop preview when settings panel closes
-    final metronomeProvider = context.read<MetronomeProvider>();
-    if (metronomeProvider.isPreviewing) {
-      metronomeProvider.stopPreview();
+    // Stop preview when settings panel closes using stored reference
+    if (_metronomeProvider?.isPreviewing == true) {
+      _metronomeProvider?.stopPreview();
     }
     super.dispose();
   }

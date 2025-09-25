@@ -35,15 +35,20 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   Timer? _loadingTimeout;
   Timer? _positionTimer;
   VideoProvider? _videoProvider;
+  SongProvider? _songProvider;
+  MetronomeProvider? _metronomeProvider;
   bool _showCountIn = false;
   Timer? _countInTimer;
+  bool _shouldPauseAfterSeek = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // Safely get the video provider reference
+    // Safely get provider references
     _videoProvider ??= context.read<VideoProvider>();
+    _songProvider ??= context.read<SongProvider>();
+    _metronomeProvider ??= context.read<MetronomeProvider>();
   }
 
   @override
@@ -111,7 +116,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         
         // Wait for disposal to complete before creating new controller
         Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
+          if (mounted && context.mounted) {
             _createController(videoId, url);
           }
         });
@@ -209,8 +214,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           if (mounted && _controller != null && _isPlayerReady) {
             try {
               _controller!.pause();
-              final metronomeProvider = context.read<MetronomeProvider>();
-              metronomeProvider.stopMetronome();
+              _metronomeProvider?.stopMetronome();
               developer.log('Force pause executed - video should be paused');
             } catch (e) {
               developer.log('Error in force pause: $e');
@@ -221,7 +225,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
         // Set a timeout to handle cases where player never becomes ready
         _loadingTimeout = Timer(const Duration(seconds: 10), () {
-          if (mounted && !_isPlayerReady && _currentUrl == url) {
+          if (mounted && context.mounted && !_isPlayerReady && _currentUrl == url) {
             developer.log('YouTube player loading timeout for: $url');
             setState(() {
               _errorMessage = 'Video failed to load. Please check the URL or try again.';
@@ -231,9 +235,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         });
 
         // Save video URL to current song
-        final songProvider = context.read<SongProvider>();
-        if (songProvider.currentSong != null) {
-          songProvider.updateSongVideoUrl(url);
+        if (_songProvider?.currentSong != null) {
+          _songProvider?.updateSongVideoUrl(url);
         }
       }
       
@@ -270,7 +273,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     // The YouTube player listener should handle most updates
     _positionTimer?.cancel();
     _positionTimer = Timer.periodic(const Duration(milliseconds: 10), (_) {
-      if (_controller != null && mounted) {
+      if (_controller != null && mounted && context.mounted) {
         try {
           // Additional safety checks before accessing controller
           if (_controller!.value.isPlaying) {
@@ -279,10 +282,9 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
               setState(() {
                 _currentPosition = newPosition;
               });
-              
+
               // Update video provider
-              final videoProvider = context.read<VideoProvider>();
-              videoProvider.setCurrentPosition(newPosition);
+              _videoProvider?.setCurrentPosition(newPosition);
             }
           }
         } catch (e) {
@@ -320,15 +322,22 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
         // Update VideoProvider with current state only if still mounted
         if (mounted) {
-          final videoProvider = context.read<VideoProvider>();
-          videoProvider.setPlayerReady(isNowReady);
-          videoProvider.setPlaying(_isPlaying);
-          videoProvider.setCurrentPosition(_currentPosition);
-          videoProvider.setTotalDuration(_totalDuration);
+          _videoProvider?.setPlayerReady(isNowReady);
+          _videoProvider?.setPlaying(_isPlaying);
+          _videoProvider?.setCurrentPosition(_currentPosition);
+          _videoProvider?.setTotalDuration(_totalDuration);
         }
         
         if (!wasReady && isNowReady) {
           developer.log('YouTube player ready - controls enabled');
+        }
+
+        // Handle pause-after-seek logic
+        if (_shouldPauseAfterSeek && isNowPlaying) {
+          developer.log('Pausing after seek to preserve previous state');
+          _shouldPauseAfterSeek = false;
+          _controller!.pause();
+          return; // Exit early to prevent metronome state changes
         }
 
         // Handle metronome integration when play state changes
@@ -356,13 +365,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _handleMetronomeStateChange(bool isPlaying) {
     try {
-      final metronomeProvider = context.read<MetronomeProvider>();
-
-      if (!isPlaying && metronomeProvider.isPlaying) {
+      if (!isPlaying && (_metronomeProvider?.isPlaying ?? false)) {
         // Video was paused by some other means (e.g., clicking YouTube player)
         // Stop the metronome
         developer.log('Video paused externally, stopping metronome');
-        metronomeProvider.stopMetronome();
+        _metronomeProvider?.stopMetronome();
       }
       // Note: We don't start metronome here when video plays - that's handled by _onPlayPause
     } catch (e) {
@@ -379,8 +386,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         // Pause video and stop metronome
         developer.log('Pausing video and stopping metronome');
         _controller!.pause();
-        final metronomeProvider = context.read<MetronomeProvider>();
-        metronomeProvider.stopMetronome();
+        _metronomeProvider?.stopMetronome();
 
         // Cancel any pending count-in timer
         _countInTimer?.cancel();
@@ -407,48 +413,47 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       _countInTimer?.cancel();
       _countInTimer = null;
 
-      final metronomeProvider = context.read<MetronomeProvider>();
-
-      if (metronomeProvider.settings.isEnabled) {
+      if (_metronomeProvider?.settings.isEnabled ?? false) {
         // Set playback rate before starting metronome
-        metronomeProvider.setPlaybackRate(_playbackRate);
+        _metronomeProvider?.setPlaybackRate(_playbackRate);
 
-        // Start metronome first
-        developer.log('Starting metronome with playback rate: $_playbackRate');
-        metronomeProvider.startMetronome();
-
-        if (metronomeProvider.settings.countInEnabled) {
+        if (_metronomeProvider?.settings.countInEnabled ?? false) {
           // Show count-in overlay
           setState(() {
             _showCountIn = true;
           });
 
-          // Wait for 1 measure before starting video (using effective BPM)
-          final effectiveBPM = (metronomeProvider.settings.bpm * _playbackRate).round();
-          final measureDuration = Duration(
-            milliseconds: (60000 / effectiveBPM * metronomeProvider.settings.timeSignature.numerator).round(),
-          );
-          developer.log('Count-in enabled: waiting ${measureDuration.inMilliseconds}ms before starting video (effective BPM: $effectiveBPM)');
+          // Set callback to hide overlay and start video when count-in completes
+          _metronomeProvider?.setOnCountInBeatCallback((beat) {
+            developer.log('Count-in beat callback: $beat');
 
-          _countInTimer = Timer(measureDuration, () {
-            if (mounted && _controller != null && _isPlayerReady && metronomeProvider.isPlaying) {
-              developer.log('Count-in complete, starting video');
-              setState(() {
-                _showCountIn = false;
-              });
-              _controller!.play();
-              _countInTimer = null;
-            } else {
-              developer.log('Count-in cancelled: mounted=$mounted, controller=${_controller != null}, ready=$_isPlayerReady, metronome=${metronomeProvider.isPlaying}');
-              if (_showCountIn) {
+            // Beat 0 is the special signal for "start now" (first beat of next measure)
+            if (beat == 0) {
+              // Hide count-in overlay immediately
+              if (mounted && context.mounted) {
                 setState(() {
                   _showCountIn = false;
                 });
+                // Start video immediately - this is precisely on beat 1 of the next measure
+                if (_controller != null && _isPlayerReady) {
+                  _controller!.play();
+                  developer.log('Video started on beat 1 of next measure');
+                }
               }
-              _countInTimer = null;
             }
           });
+
+          // Start count-in, which will automatically start the main metronome
+          developer.log('Starting count-in with playback rate: $_playbackRate');
+          _metronomeProvider?.startCountIn().then((_) {
+            developer.log('Count-in sequence completed');
+          }).catchError((error) {
+            developer.log('Error in count-in sequence: $error');
+          });
         } else {
+          // Start metronome without count-in
+          developer.log('Starting metronome with playback rate: $_playbackRate');
+          _metronomeProvider?.startMetronome();
           // Start video immediately
           _controller!.play();
         }
@@ -469,8 +474,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       _controller!.pause();
       
       // Stop metronome when stopping video
-      final metronomeProvider = context.read<MetronomeProvider>();
-      metronomeProvider.stopMetronome();
+      _metronomeProvider?.stopMetronome();
     } catch (e) {
       developer.log('Error in stop: $e');
     }
@@ -478,10 +482,16 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _onSeek(Duration position) {
     if (_controller == null || !_isPlayerReady || !mounted) return;
-    
+
     try {
       // Additional check to ensure controller is not disposed
       if (_controller!.value.isReady) {
+        final wasPlaying = _isPlaying;
+        // Set flag to pause after seek if video was paused
+        if (!wasPlaying) {
+          _shouldPauseAfterSeek = true;
+        }
+
         _controller!.seekTo(position);
       }
     } catch (e) {
@@ -491,8 +501,15 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _onSkipBackward() {
     if (_controller == null || !_isPlayerReady || !mounted) return;
-    
+
     try {
+      final wasPlaying = _isPlaying;
+
+      // Set flag to pause after seek if video was paused
+      if (!wasPlaying) {
+        _shouldPauseAfterSeek = true;
+      }
+
       final newPosition = _currentPosition - const Duration(seconds: 10);
       _controller!.seekTo(newPosition.isNegative ? Duration.zero : newPosition);
     } catch (e) {
@@ -502,12 +519,54 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _onSkipForward() {
     if (_controller == null || !_isPlayerReady || !mounted) return;
-    
+
     try {
+      final wasPlaying = _isPlaying;
+
+      // Set flag to pause after seek if video was paused
+      if (!wasPlaying) {
+        _shouldPauseAfterSeek = true;
+      }
+
       final newPosition = _currentPosition + const Duration(seconds: 10);
       _controller!.seekTo(newPosition > _totalDuration ? _totalDuration : newPosition);
     } catch (e) {
       developer.log('Error in skip forward: $e');
+    }
+  }
+
+  void _onSeekBackward1s() {
+    if (_controller == null || !_isPlayerReady || !mounted) return;
+
+    try {
+      final wasPlaying = _isPlaying;
+      // Set flag to pause after seek if video was paused
+      if (!wasPlaying) {
+        _shouldPauseAfterSeek = true;
+      }
+
+      final newPosition = _currentPosition - const Duration(seconds: 1);
+      _controller!.seekTo(newPosition.isNegative ? Duration.zero : newPosition);
+    } catch (e) {
+      developer.log('Error in 1s backward seek: $e');
+    }
+  }
+
+  void _onSeekForward1s() {
+    if (_controller == null || !_isPlayerReady || !mounted) return;
+
+    try {
+      final wasPlaying = _isPlaying;
+
+      // Set flag to pause after seek if video was paused
+      if (!wasPlaying) {
+        _shouldPauseAfterSeek = true;
+      }
+
+      final newPosition = _currentPosition + const Duration(seconds: 1);
+      _controller!.seekTo(newPosition > _totalDuration ? _totalDuration : newPosition);
+    } catch (e) {
+      developer.log('Error in 1s forward seek: $e');
     }
   }
 
@@ -522,8 +581,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         });
         
         // Update metronome playback rate
-        final metronomeProvider = context.read<MetronomeProvider>();
-        metronomeProvider.setPlaybackRate(rate);
+        _metronomeProvider?.setPlaybackRate(rate);
         developer.log('Updated metronome playback rate to: ${rate}x');
       }
       developer.log('Playback rate changed to: ${rate}x');
@@ -576,30 +634,13 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   }
 
   Widget _buildNoVideoSelected() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.video_library,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No Video Selected',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Enter a YouTube URL below to load a video',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-          ),
-        ],
+    return const Center(
+      child: Text(
+        'No Video Selected',
+        style: TextStyle(
+          color: Colors.grey,
+          fontSize: 14,
+        ),
       ),
     );
   }
@@ -659,7 +700,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         // Check if we need to load a video URL from VideoProvider
         if (hasSong && videoProvider.hasVideo && videoProvider.currentUrl != _currentUrl && !_isLoading) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && videoProvider.currentUrl != _currentUrl && !_isLoading) {
+            if (mounted && context.mounted && videoProvider.currentUrl != _currentUrl && !_isLoading) {
               developer.log('VideoProvider URL changed, loading: ${videoProvider.currentUrl}');
               _loadVideo(videoProvider.currentUrl);
             }
@@ -669,7 +710,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           // Only clear video if BOTH VideoProvider has no video AND the song has no video URL
           // This prevents race condition where user loads video but song hasn't been updated yet
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_isLoading && !videoProvider.hasVideo) {
+            if (mounted && context.mounted && !_isLoading && !videoProvider.hasVideo) {
               developer.log('Song and VideoProvider have no video URL, clearing player');
               _clearVideo();
             }
@@ -710,6 +751,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                 onSeek: _onSeek,
                 onSkipBackward: _onSkipBackward,
                 onSkipForward: _onSkipForward,
+                onSeekBackward1s: _onSeekBackward1s,
+                onSeekForward1s: _onSeekForward1s,
                 onPlaybackRateChanged: _onPlaybackRateChanged,
                 formatDuration: _formatDuration,
               ),
@@ -722,7 +765,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
               // Video player fills the entire container
               Container(
                 color: Colors.black,
-                child: _isLoading && _currentUrl.isNotEmpty
+                child: (_isLoading && _currentUrl.isNotEmpty) || (videoProvider.hasVideo && _controller == null)
                     ? const Center(
                         child: CircularProgressIndicator(
                           color: Colors.white,
@@ -749,7 +792,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                   right: 0,
                   bottom: 0,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
@@ -772,8 +815,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                           onPressed: _onPlayPause,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
+                            minWidth: 24,
+                            minHeight: 24,
                           ),
                         ),
                         // Current time
@@ -789,15 +832,15 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: SizedBox(
-                              height: 20,
+                              height: 16,
                               child: SliderTheme(
                                 data: SliderThemeData(
-                                  trackHeight: 2,
+                                  trackHeight: 1.5,
                                   thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 6,
+                                    enabledThumbRadius: 4,
                                   ),
                                   overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 12,
+                                    overlayRadius: 8,
                                   ),
                                   activeTrackColor: Theme.of(context).colorScheme.primary,
                                   inactiveTrackColor: Colors.grey[600],

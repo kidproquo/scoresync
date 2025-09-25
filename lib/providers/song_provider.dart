@@ -439,14 +439,20 @@ class SongProvider extends ChangeNotifier {
         developer.log('RectangleProvider is null');
       }
 
-      // Load video URL into VideoProvider
-      if (song.videoUrl != null && _videoProvider != null) {
-        developer.log('VideoProvider before loading: ${_videoProvider.hashCode}');
-        developer.log('Loading video URL: ${song.videoUrl!}');
-        _videoProvider!.setVideoUrl(song.videoUrl!);
-        developer.log('Video URL successfully loaded into VideoProvider');
+      // Load video URL into VideoProvider (always set, even if null)
+      if (_videoProvider != null) {
+        if (song.videoUrl != null) {
+          developer.log('VideoProvider before loading: ${_videoProvider.hashCode}');
+          developer.log('Loading video URL: ${song.videoUrl!}');
+          _videoProvider!.setVideoUrl(song.videoUrl!);
+          developer.log('Video URL successfully loaded into VideoProvider');
+        } else {
+          developer.log('Setting empty video URL for new song');
+          _videoProvider!.clearVideo();
+          developer.log('Video URL cleared for new song');
+        }
       } else {
-        developer.log('Skipping video load - videoUrl: ${song.videoUrl}, videoProvider: ${_videoProvider != null}');
+        developer.log('VideoProvider is null');
       }
 
       // Load metronome settings into MetronomeProvider

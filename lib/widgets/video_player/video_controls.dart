@@ -14,6 +14,8 @@ class VideoControls extends StatefulWidget {
   final Function(Duration) onSeek;
   final VoidCallback onSkipBackward;
   final VoidCallback onSkipForward;
+  final VoidCallback onSeekBackward1s;
+  final VoidCallback onSeekForward1s;
   final Function(double) onPlaybackRateChanged;
   final String Function(Duration) formatDuration;
 
@@ -32,6 +34,8 @@ class VideoControls extends StatefulWidget {
     required this.onSeek,
     required this.onSkipBackward,
     required this.onSkipForward,
+    required this.onSeekBackward1s,
+    required this.onSeekForward1s,
     required this.onPlaybackRateChanged,
     required this.formatDuration,
   });
@@ -181,6 +185,14 @@ class _VideoControlsState extends State<VideoControls> {
                 padding: isPlaybackMode ? const EdgeInsets.all(4) : null,
                 constraints: isPlaybackMode ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
               ),
+              // Add 1s seek buttons in design mode only
+              if (!isPlaybackMode) ...[
+                IconButton(
+                  onPressed: widget.isPlayerReady ? widget.onSeekBackward1s : null,
+                  icon: Icon(Icons.keyboard_arrow_left, color: iconColor),
+                  tooltip: '1 second backward',
+                ),
+              ],
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onPlayPause : null,
                 icon: widget.isPlayerReady || widget.currentUrl.isEmpty
@@ -201,12 +213,19 @@ class _VideoControlsState extends State<VideoControls> {
                 padding: isPlaybackMode ? const EdgeInsets.all(4) : null,
                 constraints: isPlaybackMode ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
               ),
-              if (!isPlaybackMode)
+              // Add 1s forward seek button in design mode only
+              if (!isPlaybackMode) ...[
+                IconButton(
+                  onPressed: widget.isPlayerReady ? widget.onSeekForward1s : null,
+                  icon: Icon(Icons.keyboard_arrow_right, color: iconColor),
+                  tooltip: '1 second forward',
+                ),
                 IconButton(
                   onPressed: widget.isPlayerReady ? widget.onStop : null,
                   icon: Icon(Icons.stop, color: iconColor),
                   tooltip: 'Stop',
                 ),
+              ],
               IconButton(
                 onPressed: widget.isPlayerReady ? widget.onSkipForward : null,
                 icon: Icon(Icons.forward_10, color: iconColor, size: isPlaybackMode ? 20 : null),

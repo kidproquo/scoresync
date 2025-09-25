@@ -393,3 +393,21 @@ lib/
   - Preview now runs continuously with current settings and auto-updates when changed
   - Preview automatically stops when settings panel closes or metronome disabled
   - Changed metronome sounds to claves44_wav.wav (accent) and woodblock_high44_wav.wav (regular clicks)
+- **Fixed deactivated widget context access errors**:
+  - Resolved "Looking up a deactivated widget's ancestor is unsafe" error in mode switching
+  - Fixed metronome settings panel dispose method to use stored provider reference instead of context.read()
+  - Fixed YouTube player widget context access in async operations with proper provider reference storage
+  - Added context.mounted checks to all Timer callbacks, Future.delayed operations, and addPostFrameCallback calls
+  - Implemented safe provider reference storage in didChangeDependencies() across affected widgets
+- **Added +/-1s seek buttons to video player in design mode**:
+  - Added precise 1-second seek buttons (keyboard_arrow_left/right icons) in design mode only
+  - Positioned between 10s skip buttons and play/pause button for intuitive control flow
+  - Implemented onSeekBackward1s and onSeekForward1s callbacks in VideoControls widget
+  - Added corresponding seek methods in YouTubePlayerWidget with proper bounds checking
+  - Enhanced video control precision for detailed sync point creation in design mode
+- **Fixed seeking behavior to respect playback state**:
+  - Resolved issue where seeking (progress bar, skip buttons, 1s buttons) would always start playback
+  - Implemented _shouldPauseAfterSeek flag to track when video should remain paused after seek
+  - Modified _onPlayerStateChanged to detect unwanted playback after seek and immediately pause
+  - Updated all seek methods (_onSeek, _onSkipBackward, _onSkipForward, _onSeekBackward1s, _onSeekForward1s)
+  - Now preserves video pause state during all seek operations for better design mode workflow

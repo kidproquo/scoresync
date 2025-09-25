@@ -411,3 +411,18 @@ lib/
   - Modified _onPlayerStateChanged to detect unwanted playback after seek and immediately pause
   - Updated all seek methods (_onSeek, _onSkipBackward, _onSkipForward, _onSeekBackward1s, _onSeekForward1s)
   - Now preserves video pause state during all seek operations for better design mode workflow
+- **Unified fullscreen layout with video overlay for both modes**:
+  - Implemented consistent fullscreen PDF viewing in both design and playback modes
+  - Video overlay now appears in same position (bottom-right) for both modes
+  - Enhanced video control design with overlay style and mode-aware auto-hide behavior
+  - Redesigned video controls to use modal dialog for URL editing instead of inline editing
+  - Added responsive video overlay sizing: 420×280px in design mode, 240×135px in playback mode
+  - Made controls always visible in design mode while maintaining auto-hide in playback mode
+- **Fixed video overlay resize overflow errors**:
+  - Resolved "RenderFlex overflowed" errors occurring during mode transitions
+  - Made error state and placeholder widgets responsive using LayoutBuilder for small containers
+  - Created compact error displays (height < 200px) with reduced content for overlay containers
+  - Implemented responsive design mode controls with LayoutBuilder and SingleChildScrollView
+  - For narrow containers (< 300px), controls now use horizontal scrolling to prevent overflow
+  - Removed AnimatedPositioned animation from video overlay to eliminate transition overflow
+  - Video overlay now instantly snaps to correct size instead of animating, preventing intermediate overflow states

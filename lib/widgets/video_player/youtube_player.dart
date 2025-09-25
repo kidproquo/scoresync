@@ -3,7 +3,6 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:provider/provider.dart';
 import 'dart:developer' as developer;
 import 'dart:async';
-import 'video_controls.dart';
 import '../../providers/song_provider.dart';
 import '../../providers/video_provider.dart';
 import '../../providers/app_mode_provider.dart';
@@ -572,14 +571,14 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _onPlaybackRateChanged(double rate) {
     if (_controller == null || !_isPlayerReady || !mounted) return;
-    
+
     try {
       _controller!.setPlaybackRate(rate);
       if (mounted) {
         setState(() {
           _playbackRate = rate;
         });
-        
+
         // Update metronome playback rate
         _metronomeProvider?.setPlaybackRate(rate);
         developer.log('Updated metronome playback rate to: ${rate}x');
@@ -588,6 +587,50 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     } catch (e) {
       developer.log('Error changing playback rate: $e');
     }
+  }
+
+  void _showEditUrlDialog() {
+    final TextEditingController urlController = TextEditingController(text: _currentUrl);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit YouTube URL'),
+          content: TextField(
+            controller: urlController,
+            decoration: const InputDecoration(
+              labelText: 'YouTube URL',
+              hintText: 'Enter YouTube URL...',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                Navigator.of(dialogContext).pop();
+                _loadVideo(value.trim());
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final url = urlController.text.trim();
+                if (url.isNotEmpty) {
+                  Navigator.of(dialogContext).pop();
+                  _loadVideo(url);
+                }
+              },
+              child: const Text('Load'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _formatDuration(Duration duration) {
@@ -646,48 +689,99 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   }
 
   Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Error Loading Video',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.red[600],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Check if we have limited space (like in playback mode overlay)
+        final isCompact = constraints.maxHeight < 200;
+
+        if (isCompact) {
+          // Compact error display for small containers
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 24,
+                  color: Colors.red[400],
                 ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              _errorMessage!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
+                const SizedBox(height: 4),
+                Text(
+                  'Error Loading Video',
+                  style: TextStyle(
+                    color: Colors.red[600],
+                    fontSize: 12,
                   ),
-              textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                TextButton.icon(
+                  onPressed: () {
+                    if (_currentUrl.isNotEmpty) {
+                      setState(() {
+                        _errorMessage = null;
+                      });
+                      _loadVideo(_currentUrl);
+                    }
+                  },
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Retry', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: const Size(60, 30),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              if (_currentUrl.isNotEmpty) {
-                setState(() {
-                  _errorMessage = null;
-                });
-                _loadVideo(_currentUrl);
-              }
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
-          ),
-        ],
-      ),
+          );
+        } else {
+          // Full error display for larger containers
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error Loading Video',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.red[600],
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    _errorMessage!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (_currentUrl.isNotEmpty) {
+                      setState(() {
+                        _errorMessage = null;
+                      });
+                      _loadVideo(_currentUrl);
+                    }
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+      },
     );
   }
 
@@ -720,47 +814,9 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         if (!hasSong) {
           return _buildNoSongPlaceholder();
         }
-        
-        // In design mode, use column layout; in playback mode, use overlay
-        if (appModeProvider.isDesignMode) {
-          return Column(
-            children: [
-              Expanded(
-                child: Container(
-                  color: Colors.black,
-                  child: _isLoading && _currentUrl.isNotEmpty
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                          ),
-                        )
-                      : _buildPlayer(),
-                ),
-              ),
-              VideoControls(
-                isPlaying: _isPlaying,
-                isPlayerReady: _isPlayerReady,
-                currentPosition: _currentPosition,
-                totalDuration: _totalDuration,
-                playbackRate: _playbackRate,
-                currentUrl: _currentUrl,
-                isDesignMode: appModeProvider.isDesignMode,
-                onLoadVideo: _loadVideo,
-                onPlayPause: _onPlayPause,
-                onStop: _onStop,
-                onSeek: _onSeek,
-                onSkipBackward: _onSkipBackward,
-                onSkipForward: _onSkipForward,
-                onSeekBackward1s: _onSeekBackward1s,
-                onSeekForward1s: _onSeekForward1s,
-                onPlaybackRateChanged: _onPlaybackRateChanged,
-                formatDuration: _formatDuration,
-              ),
-            ],
-          );
-        } else {
-          // Playback mode - show video with minimal overlay controls
-          return Stack(
+
+        // Use overlay layout for both modes now
+        return Stack(
             children: [
               // Video player fills the entire container
               Container(
@@ -792,7 +848,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                   right: 0,
                   bottom: 0,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: appModeProvider.isDesignMode ? 10 : 6,
+                      vertical: appModeProvider.isDesignMode ? 8 : 2,
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
@@ -803,7 +862,87 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                         ],
                       ),
                     ),
-                    child: Row(
+                    child: appModeProvider.isDesignMode ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Top row - main controls
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final controls = _buildDesignControls();
+                            // Use SingleChildScrollView for very narrow containers
+                            final isVeryNarrow = constraints.maxWidth < 300;
+                            if (isVeryNarrow) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(children: controls),
+                              );
+                            } else {
+                              return Row(children: controls);
+                            }
+                          },
+                        ),
+                        // Bottom row - progress bar and time
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Row(
+                            children: [
+                              // Current time
+                              Text(
+                                _formatDuration(_currentPosition),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              // Progress bar
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: SizedBox(
+                                  height: 16,
+                                  child: SliderTheme(
+                                    data: SliderThemeData(
+                                      trackHeight: 1.5,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 4,
+                                      ),
+                                      overlayShape: const RoundSliderOverlayShape(
+                                        overlayRadius: 8,
+                                      ),
+                                      activeTrackColor: Theme.of(context).colorScheme.primary,
+                                      inactiveTrackColor: Colors.grey[600],
+                                      thumbColor: Theme.of(context).colorScheme.primary,
+                                      overlayColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                                    ),
+                                    child: Slider(
+                                      value: _totalDuration.inSeconds > 0
+                                          ? _currentPosition.inSeconds.toDouble()
+                                          : 0.0,
+                                      min: 0.0,
+                                      max: _totalDuration.inSeconds.toDouble(),
+                                      onChanged: (value) {
+                                        _onSeek(Duration(seconds: value.toInt()));
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Total time
+                            Text(
+                              _formatDuration(_totalDuration),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ) : Row(
+                      // Playback mode - single row layout
                       children: [
                         // Play/pause button
                         IconButton(
@@ -869,7 +1008,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                             fontSize: 11,
                           ),
                         ),
-                        // Speed control - dropdown style showing current value
+                        // Speed control
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -904,38 +1043,214 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                 ),
             ],
           );
-        }
       },
     );
   }
 
   Widget _buildNoSongPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.video_library,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No Video Player',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Check if we have limited space (like in playback mode overlay)
+        final isCompact = constraints.maxHeight < 200;
+
+        if (isCompact) {
+          // Compact display for small containers
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.video_library,
+                  size: 24,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'No Video',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create or load a song to access video features',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[500],
+          );
+        } else {
+          // Full display for larger containers
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.video_library,
+                  size: 64,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No Video Player',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Create or load a song to access video features',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+          );
+        }
+      },
     );
+  }
+
+  List<Widget> _buildDesignControls() {
+    return [
+      // Edit button
+      IconButton(
+        icon: const Icon(
+          Icons.edit,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: _showEditUrlDialog,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        tooltip: 'Edit YouTube URL',
+      ),
+      // 10s backward button
+      IconButton(
+        icon: const Icon(
+          Icons.replay_10,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: _isPlayerReady ? _onSkipBackward : null,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        tooltip: '10 seconds backward',
+      ),
+      // 1s backward button
+      IconButton(
+        icon: const Icon(
+          Icons.keyboard_arrow_left,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: _isPlayerReady ? _onSeekBackward1s : null,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        tooltip: '1 second backward',
+      ),
+      // Play/pause button
+      IconButton(
+        icon: Icon(
+          _isPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.white,
+          size: 24,
+        ),
+        onPressed: _onPlayPause,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 34,
+          minHeight: 34,
+        ),
+      ),
+      // 1s forward button
+      IconButton(
+        icon: const Icon(
+          Icons.keyboard_arrow_right,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: _isPlayerReady ? _onSeekForward1s : null,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        tooltip: '1 second forward',
+      ),
+      // Stop button
+      IconButton(
+        icon: const Icon(
+          Icons.stop,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: _isPlayerReady ? _onStop : null,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        tooltip: 'Stop',
+      ),
+      // 10s forward button
+      IconButton(
+        icon: const Icon(
+          Icons.forward_10,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: _isPlayerReady ? _onSkipForward : null,
+        padding: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        tooltip: '10 seconds forward',
+      ),
+      // Speed control in top row
+      const SizedBox(width: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: DropdownButton<double>(
+          value: _playbackRate,
+          onChanged: (double? value) {
+            if (value != null) _onPlaybackRateChanged(value);
+          },
+          items: const [
+            DropdownMenuItem(value: 0.5, child: Text('0.5x', style: TextStyle(fontSize: 11))),
+            DropdownMenuItem(value: 0.6, child: Text('0.6x', style: TextStyle(fontSize: 11))),
+            DropdownMenuItem(value: 0.7, child: Text('0.7x', style: TextStyle(fontSize: 11))),
+            DropdownMenuItem(value: 0.8, child: Text('0.8x', style: TextStyle(fontSize: 11))),
+            DropdownMenuItem(value: 0.9, child: Text('0.9x', style: TextStyle(fontSize: 11))),
+            DropdownMenuItem(value: 1.0, child: Text('1.0x', style: TextStyle(fontSize: 11))),
+            DropdownMenuItem(value: 1.2, child: Text('1.2x', style: TextStyle(fontSize: 11))),
+          ],
+          underline: Container(),
+          isDense: true,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+          dropdownColor: Colors.black87,
+          style: const TextStyle(color: Colors.white, fontSize: 11),
+        ),
+      ),
+    ];
   }
 }

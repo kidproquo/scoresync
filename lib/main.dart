@@ -8,7 +8,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'widgets/score_viewer/score_viewer.dart';
 import 'widgets/video_player/youtube_player.dart';
-import 'widgets/mode_switcher.dart';
 import 'providers/app_mode_provider.dart';
 import 'providers/score_provider.dart';
 import 'providers/video_provider.dart';
@@ -16,7 +15,6 @@ import 'providers/sync_provider.dart';
 import 'providers/rectangle_provider.dart';
 import 'providers/song_provider.dart';
 import 'providers/metronome_provider.dart';
-import 'widgets/song_menu.dart';
 import 'widgets/load_song_dialog.dart';
 import 'widgets/metronome/metronome_settings_panel.dart';
 import 'widgets/score_viewer/page_controls.dart';
@@ -441,11 +439,14 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _toggleGuiControls() {
+    final appModeProvider = context.read<AppModeProvider>();
+
     setState(() {
       _showGuiControls = !_showGuiControls;
     });
-    
-    if (_showGuiControls) {
+
+    // Only start timer in playback mode when controls are shown
+    if (_showGuiControls && appModeProvider.isPlaybackMode) {
       _startHideTimer();
     }
   }
@@ -454,9 +455,13 @@ class _MainScreenState extends State<MainScreen> {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        setState(() {
-          _showGuiControls = false;
-        });
+        final appModeProvider = context.read<AppModeProvider>();
+        // Only hide controls in playback mode
+        if (appModeProvider.isPlaybackMode) {
+          setState(() {
+            _showGuiControls = false;
+          });
+        }
       }
     });
   }
@@ -528,56 +533,58 @@ class _MainScreenState extends State<MainScreen> {
         final songName = songProvider.currentSongName ?? 'Score Sync';
         final hasSong = songProvider.currentSong != null;
         final isPlaybackMode = !appModeProvider.isDesignMode;
-        
-        // In playback mode, show GUI controls initially and start timer
-        if (isPlaybackMode && !_hasInitialized) {
+
+        // Initialize controls and timer
+        if (!_hasInitialized) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             // Add a small delay to allow layout to stabilize before initializing
             Future.delayed(const Duration(milliseconds: 100), () {
               if (mounted) {
                 setState(() {
                   _hasInitialized = true;
+                  // In design mode, keep controls always visible
+                  _showGuiControls = true;
                 });
-                _startHideTimer();
+                // Only start timer in playback mode
+                if (isPlaybackMode) {
+                  _startHideTimer();
+                }
               }
             });
           });
-        } else if (!isPlaybackMode) {
-          // Reset state when switching to design mode
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _hasInitialized = false;
-              _hideTimer?.cancel();
-              _hideTimer = null;
-              if (!_showGuiControls) {
+        }
+
+        // Handle mode changes - show controls permanently in design mode
+        if (_hasInitialized) {
+          if (!isPlaybackMode && !_showGuiControls) {
+            // Switching to design mode - show controls and cancel timer
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _hideTimer?.cancel();
                 setState(() {
                   _showGuiControls = true;
                 });
               }
-            }
-          });
+            });
+          } else if (isPlaybackMode && _hideTimer == null) {
+            // Switching to playback mode - start auto-hide timer
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _startHideTimer();
+              }
+            });
+          }
         }
-        
+
         return Scaffold(
-          appBar: (!isPlaybackMode) ? AppBar(
-            leading: const SongMenu(),
-            title: Text(songName),
-            actions: hasSong ? const [
-              ModeSwitcher(),
-            ] : null,
-          ) : null,
-          body: hasSong ? (isPlaybackMode
-              ? _buildFullscreenPlayback()
-              : _buildSplitScreenLayout()) : const NoSongPlaceholder(),
+          // No fixed AppBar - it's part of the fullscreen layout now
+          body: hasSong ? _buildFullscreenLayout(isPlaybackMode, songName) : const NoSongPlaceholder(),
         );
       },
     );
   }
 
-  Widget _buildFullscreenPlayback() {
-    final songProvider = context.read<SongProvider>();
-    final songName = songProvider.currentSongName ?? 'Score Sync';
-    
+  Widget _buildFullscreenLayout(bool isPlaybackMode, String songName) {
     return Stack(
       children: [
         // Fullscreen score viewer
@@ -587,8 +594,8 @@ class _MainScreenState extends State<MainScreen> {
             child: const ScoreViewer(),
           ),
         ),
-        // Tap overlay (only when controls are hidden)
-        if (!_showGuiControls)
+        // Tap overlay (only in playback mode when controls are hidden)
+        if (isPlaybackMode && !_showGuiControls)
           Positioned.fill(
             child: GestureDetector(
               onTap: _onTap,
@@ -597,13 +604,11 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         // Video player overlay (always visible in fullscreen)
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+        Positioned(
           bottom: 80,
           right: 20,
-          width: 240, // 3/4 of 320
-          height: 135, // 3/4 of 180, maintains 16:9 aspect ratio
+          width: isPlaybackMode ? 240 : 420,  // Reduced width for better control balance
+          height: isPlaybackMode ? 135 : 280,  // Maintains aspect ratio and adds space for controls
           child: Container(
             decoration: BoxDecoration(
               color: Colors.black,
@@ -640,16 +645,16 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
-        // Floating app bar (shows/hides with tap)
+        // Floating app bar (always visible in design mode, auto-hide in playback mode)
         AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          top: _showGuiControls ? 0 : -100,
+          top: (_showGuiControls || !isPlaybackMode) ? 0 : -100,
           left: 0,
           right: 0,
           child: AnimatedOpacity(
             duration: const Duration(milliseconds: 300),
-            opacity: _showGuiControls ? 1.0 : 0.0,
+            opacity: (_showGuiControls || !isPlaybackMode) ? 1.0 : 0.0,
             child: Container(
               height: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
               decoration: BoxDecoration(
@@ -687,7 +692,7 @@ class _MainScreenState extends State<MainScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Metronome button (only in playback mode)
+                            // Metronome button
                             Consumer<MetronomeProvider>(
                               builder: (context, metronomeProvider, _) {
                                 return IconButton(
@@ -828,11 +833,11 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
-        // Page controls overlay at bottom (auto-hide)
+        // Page controls overlay at bottom (always visible in design mode, auto-hide in playback mode)
         AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          bottom: _showGuiControls ? 0 : -100,
+          bottom: (_showGuiControls || !isPlaybackMode) ? 0 : -100,
           left: 0,
           right: 0,
           child: Consumer2<ScoreProvider, SongProvider>(
@@ -859,7 +864,7 @@ class _MainScreenState extends State<MainScreen> {
                     onLastPage: () => _goToLastPage(context),
                     onSelectPdf: () => _pickPdfFile(context),
                     canSelectPdf: songProvider.currentSong != null,
-                    isDesignMode: false, // Always false in playback mode
+                    isDesignMode: !isPlaybackMode,
                   ),
                 );
               }
@@ -933,55 +938,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildSplitScreenLayout() {
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                right: BorderSide(
-                  color: Theme.of(context).dividerColor,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Column(
-              children: [
-                const Expanded(
-                  child: ScoreViewer(),
-                ),
-                // Page controls at bottom in design mode
-                Consumer2<ScoreProvider, SongProvider>(
-                  builder: (context, scoreProvider, songProvider, _) {
-                    if (scoreProvider.selectedPdfFile != null && scoreProvider.totalPages > 0) {
-                      return PageControls(
-                        currentPage: scoreProvider.currentPageNumber,
-                        totalPages: scoreProvider.totalPages,
-                        onFirstPage: () => _goToFirstPage(context),
-                        onPreviousPage: () => _goToPreviousPage(context),
-                        onNextPage: () => _goToNextPage(context),
-                        onLastPage: () => _goToLastPage(context),
-                        onSelectPdf: () => _pickPdfFile(context),
-                        canSelectPdf: songProvider.currentSong != null,
-                        isDesignMode: true,
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 1,
-          child: YouTubePlayerWidget(showGuiControls: _showGuiControls),
-        ),
-      ],
-    );
-  }
+  // Removed _buildSplitScreenLayout - now using fullscreen for both modes
 
   void _showLoadSongDialog(BuildContext context) async {
     final songProvider = context.read<SongProvider>();

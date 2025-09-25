@@ -11,6 +11,15 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+
+    // Apply Kotlin JVM target configuration to all subprojects
+    project.plugins.withType(org.jetbrains.kotlin.gradle.plugin.KotlinAndroidPluginWrapper) {
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
+            kotlinOptions {
+                jvmTarget = "1.8"
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {

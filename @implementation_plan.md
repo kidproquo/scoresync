@@ -462,3 +462,19 @@ lib/
   - Integrated small drag indicator icon in top-right corner for better UX
   - Responsive positioning that adapts to both portrait and landscape orientations
   - Optimized performance by eliminating unnecessary widget rebuilds during drag operations
+- **Fixed Android release build configuration**:
+  - Resolved "Unknown Kotlin JVM target: 21" error by configuring all subprojects to use JVM target 1.8
+  - Added Kotlin JVM target configuration to android/build.gradle with plugins.withType approach
+  - Added kotlin.jvm.target.validation.mode=warning to android/gradle.properties for compatibility
+  - Ensured consistent build configuration across all Android modules and dependencies
+- **Enhanced UI compactness and readability**:
+  - Shortened page label format from "Page 1 of 15" to compact "1/15" format in PageControls
+  - Changed PDF selection button text from "Select PDF" to concise "PDF" for cleaner design mode UI
+- **Improved Load Song dialog layout and responsiveness**:
+  - Fixed song tile layout from 6 columns to responsive 2/3 columns based on screen width (<600px uses 2 columns)
+  - Enhanced tile visibility with larger aspect ratio (1.4) and increased spacing (12px)
+  - Increased music note icon size from 24 to 32 pixels and adjusted flex proportions for better balance
+  - Fixed song name text visibility by explicitly setting color to Colors.black87 instead of null
+  - Improved date text contrast by using Colors.grey[700] instead of Colors.grey[600]
+  - Enhanced text layout with 2-line wrapping support for song names and optimized font sizes (13px name, 12px date)
+  - Adjusted flex ratios: icon section reduced to flex 2, text section increased to flex 3 for better text space

@@ -102,11 +102,11 @@ class _LoadSongDialogState extends State<LoadSongDialog> {
                   child: songs.isEmpty 
                     ? _buildEmptyState()
                     : GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 6,  // Increased to 6 for 50% narrower thumbnails
-                          childAspectRatio: 1.1,  // Adjusted for better proportions
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: MediaQuery.of(context).size.width < 600 ? 2 : 3,  // 2 columns on smaller screens
+                          childAspectRatio: 1.4,  // Wider tiles for better text display
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
                         ),
                         itemCount: songs.length,
                         itemBuilder: (context, index) {
@@ -199,26 +199,26 @@ class _SongCard extends StatelessWidget {
           children: [
             // Music Icon
             Expanded(
-              flex: 1,  // Further reduced to give more space to text
+              flex: 2,  // Reduced icon space
               child: Container(
-                margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),  // Reduced bottom margin
+                margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: song.pdfPath != null ? Colors.blue[50] : Colors.grey[100],
                 ),
                 child: Icon(
                   Icons.music_note,
-                  size: 24,  // Further reduced icon size
+                  size: 32,  // Slightly smaller icon
                   color: song.pdfPath != null ? Colors.blue[600] : Colors.grey[400],
                 ),
               ),
             ),
-            
+
             // Song info
             Expanded(
-              flex: 2,  // Increased from 1
+              flex: 3,  // More space for text
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),  // Reduced top padding
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -232,19 +232,19 @@ class _SongCard extends StatelessWidget {
                               song.name,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,  // Reduced font size to prevent overflow
+                                fontSize: 13,  // Slightly smaller to fit better
                                 color: isCurrentSong
                                     ? Theme.of(context).colorScheme.primary
-                                    : null,
+                                    : Colors.black87,
                               ),
-                              maxLines: 2,  // Allow 2 lines for longer names
+                              maxLines: 2,  // Allow wrapping to 2 lines
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (isCurrentSong)
                             Icon(
                               Icons.check_circle,
-                              size: 14,  // Reduced icon size
+                              size: 16,
                               color: Theme.of(context).colorScheme.primary,
                             ),
                         ],
@@ -257,8 +257,8 @@ class _SongCard extends StatelessWidget {
                       child: Text(
                         _formatDate(song.createdAt),
                         style: TextStyle(
-                          fontSize: 10,  // Reduced font size
-                          color: Colors.grey[600],
+                          fontSize: 12,  // Improved readability
+                          color: Colors.grey[700],
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

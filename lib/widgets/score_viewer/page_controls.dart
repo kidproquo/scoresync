@@ -43,7 +43,7 @@ class PageControls extends StatelessWidget {
           Expanded(
             child: Center(
               child: Text(
-                'Page $currentPage of $totalPages',
+                '$currentPage/$totalPages',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
@@ -65,7 +65,7 @@ class PageControls extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: canSelectPdf ? onSelectPdf : null,
               icon: const Icon(Icons.folder_open, size: 18),
-              label: const Text('Select PDF'),
+              label: const Text('PDF'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),

@@ -1,26 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- White background with rounded corners -->
-  <rect width="1024" height="1024" rx="220" fill="#FFFFFF"/>
-  
-  <!-- Light gray background circle for contrast -->
-  <circle cx="512" cy="512" r="400" fill="#F5F5F5"/>
-  
-  <!-- Musical Note (simplified, left side) -->
-  <g id="music-note" transform="translate(280, 350)">
-    <rect x="60" y="0" width="24" height="280" rx="12" fill="#2196F3"/>
-    <circle cx="40" cy="280" r="40" fill="#2196F3"/>
+  <!-- Gray background with rounded corners -->
+  <rect width="1024" height="1024" rx="220" fill="#F5F5F5"/>
+
+  <!-- Musical Note (simplified, left side - scaled up) -->
+  <g id="music-note" transform="translate(220, 280)">
+    <!-- Note head as tilted ellipse -->
+    <ellipse cx="50" cy="350" rx="70" ry="50" transform="rotate(-20 50 350)" fill="#2196F3"/>
+    <!-- Note stem (aligned with right edge of ellipse) -->
+    <rect x="88" y="0" width="30" height="340" rx="15" fill="#2196F3"/>
   </g>
-  
-  <!-- Play Button (right side) -->
-  <path d="M620 412 L620 612 L780 512 Z" fill="#FF0000"/>
-  
-  <!-- Sync arrows (center) -->
-  <g id="sync" transform="translate(460, 470)">
-    <path d="M0 0 Q50 -30 100 0" stroke="#4CAF50" stroke-width="20" fill="none" stroke-linecap="round"/>
-    <path d="M100 80 Q50 110 0 80" stroke="#4CAF50" stroke-width="20" fill="none" stroke-linecap="round"/>
+
+  <!-- Play Button (right side - scaled up) -->
+  <path d="M600 380 L600 640 L820 510 Z" fill="#FF0000"/>
+
+  <!-- Sync arrows (center - scaled up) -->
+  <g id="sync" transform="translate(430, 450)">
+    <path d="M0 0 Q65 -40 130 0" stroke="#4CAF50" stroke-width="25" fill="none" stroke-linecap="round"/>
+    <path d="M130 100 Q65 140 0 100" stroke="#4CAF50" stroke-width="25" fill="none" stroke-linecap="round"/>
     <!-- Arrow heads -->
-    <path d="M90 -5 L100 0 L90 10" stroke="#4CAF50" stroke-width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M10 85 L0 80 L10 70" stroke="#4CAF50" stroke-width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M115 -7 L130 0 L115 13" stroke="#4CAF50" stroke-width="25" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M15 107 L0 100 L15 85" stroke="#4CAF50" stroke-width="25" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

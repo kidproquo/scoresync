@@ -38,7 +38,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   MetronomeProvider? _metronomeProvider;
   bool _showCountIn = false;
   Timer? _countInTimer;
-  bool _shouldPauseAfterSeek = false;
 
   @override
   void didChangeDependencies() {
@@ -331,13 +330,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           developer.log('YouTube player ready - controls enabled');
         }
 
-        // Handle pause-after-seek logic
-        if (_shouldPauseAfterSeek && isNowPlaying) {
-          developer.log('Pausing after seek to preserve previous state');
-          _shouldPauseAfterSeek = false;
-          _controller!.pause();
-          return; // Exit early to prevent metronome state changes
-        }
 
         // Handle metronome integration when play state changes
         if (wasPlaying != isNowPlaying) {
@@ -485,12 +477,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     try {
       // Additional check to ensure controller is not disposed
       if (_controller!.value.isReady) {
-        final wasPlaying = _isPlaying;
-        // Set flag to pause after seek if video was paused
-        if (!wasPlaying) {
-          _shouldPauseAfterSeek = true;
-        }
-
         _controller!.seekTo(position);
       }
     } catch (e) {
@@ -502,13 +488,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     if (_controller == null || !_isPlayerReady || !mounted) return;
 
     try {
-      final wasPlaying = _isPlaying;
-
-      // Set flag to pause after seek if video was paused
-      if (!wasPlaying) {
-        _shouldPauseAfterSeek = true;
-      }
-
       final newPosition = _currentPosition - const Duration(seconds: 10);
       _controller!.seekTo(newPosition.isNegative ? Duration.zero : newPosition);
     } catch (e) {
@@ -520,13 +499,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     if (_controller == null || !_isPlayerReady || !mounted) return;
 
     try {
-      final wasPlaying = _isPlaying;
-
-      // Set flag to pause after seek if video was paused
-      if (!wasPlaying) {
-        _shouldPauseAfterSeek = true;
-      }
-
       final newPosition = _currentPosition + const Duration(seconds: 10);
       _controller!.seekTo(newPosition > _totalDuration ? _totalDuration : newPosition);
     } catch (e) {
@@ -538,12 +510,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     if (_controller == null || !_isPlayerReady || !mounted) return;
 
     try {
-      final wasPlaying = _isPlaying;
-      // Set flag to pause after seek if video was paused
-      if (!wasPlaying) {
-        _shouldPauseAfterSeek = true;
-      }
-
       final newPosition = _currentPosition - const Duration(seconds: 1);
       _controller!.seekTo(newPosition.isNegative ? Duration.zero : newPosition);
     } catch (e) {
@@ -555,13 +521,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     if (_controller == null || !_isPlayerReady || !mounted) return;
 
     try {
-      final wasPlaying = _isPlaying;
-
-      // Set flag to pause after seek if video was paused
-      if (!wasPlaying) {
-        _shouldPauseAfterSeek = true;
-      }
-
       final newPosition = _currentPosition + const Duration(seconds: 1);
       _controller!.seekTo(newPosition > _totalDuration ? _totalDuration : newPosition);
     } catch (e) {

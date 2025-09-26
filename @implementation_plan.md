@@ -486,3 +486,17 @@ lib/
   - Conditionally disabled all rectangle gesture handlers (onTapDown, onPanUpdate, onPanEnd) when video is being dragged
   - Prevents rectangles from receiving unintended drag events during video overlay positioning
   - Ensures clean separation between video dragging and rectangle manipulation in design mode
+- **Removed glitchy pause-on-seek behavior from video player**:
+  - Eliminated _shouldPauseAfterSeek flag and all associated pause preservation logic
+  - Simplified all seek methods (_onSeek, _onSkipBackward, _onSkipForward, _onSeekBackward1s, _onSeekForward1s)
+  - Removed artificial pause-after-seek behavior that was causing glitchy interruptions
+  - Video player now respects natural YouTube player behavior during seeking operations
+- **Enhanced app icon design**:
+  - Changed musical note base from circle to properly tilted ellipse matching real musical notation
+  - Made note head chunkier (ellipse dimensions increased to 85×65 for main icon, 70×50 for simple icon)
+  - Repositioned stem to attach at right edge of ellipse as in standard notation
+  - Fine-tuned stem alignment for accurate positioning with rotated ellipse
+  - Changed background from white with gray circle to full gray (#F5F5F5) background
+  - Scaled up all elements by ~25-30% to better fill the square canvas
+  - Updated sync arrows color to green (#4CAF50) for better visibility
+  - Increased stroke widths and adjusted positions for improved visual balance

@@ -111,7 +111,26 @@
 
 **Progress**: All Phase 8 tasks completed. Tap detection enabled in playback mode, direct video seeking via timestamp badge clicks, full support for multiple timestamps per rectangle with individual badge interaction, and proper playback state maintenance during seeking operations.
 
-## Phase 9: Sync Point Management UI
+## Phase 9: Song Archive & Share Feature ✅ **COMPLETED**
+**Goal**: Enable users to export and share synchronized songs as archives
+
+- [x] Create comprehensive song archive data models (`SongArchive`, `RectangleData`, `MetronomeSettingsData`)
+- [x] Implement song archive service for ZIP file creation and extraction
+- [x] Add archive service with PDF path resolution for relative/absolute paths
+- [x] Replace metronome button with share button in top toolbar
+- [x] Move metronome settings to popup menu for better UI organization
+- [x] Implement functional share button with proper error handling
+- [x] Create timestamped archive files with song name branding (`{songname}_symph_{timestamp}.zip`)
+- [x] Include complete song data in archives:
+  - [x] PDF score file (`score.pdf`)
+  - [x] Song metadata with rectangles and sync points (`metadata.json`)
+  - [x] Archive manifest (`manifest.json`)
+- [x] Add iOS share dialog positioning fix for iPad compatibility
+- [x] Implement automatic cleanup of temporary archive files
+
+**Progress**: All Phase 9 tasks completed. Full song export functionality implemented with professional archive naming (`ftg_symph_20250925233630.zip`), comprehensive data serialization, PDF path resolution, iOS share integration, and proper cleanup mechanisms.
+
+## Phase 10: Sync Point Management UI
 **Goal**: Allow users to view and edit sync points
 
 - [ ] Create sync points list view
@@ -127,7 +146,7 @@
 
 **Status**: Not started
 
-## Phase 10: Polish & Error Handling
+## Phase 11: Polish & Error Handling
 **Goal**: Refine user experience and handle edge cases
 
 - [ ] Add loading indicators throughout the app
@@ -142,7 +161,7 @@
 
 **Status**: Not started
 
-## Phase 11: Testing & Documentation
+## Phase 12: Testing & Documentation
 **Goal**: Ensure reliability and maintainability
 
 - [ ] Write unit tests for:
@@ -156,7 +175,7 @@
 
 **Status**: Not started
 
-## Phase 12: Platform-Specific Optimization
+## Phase 13: Platform-Specific Optimization
 **Goal**: Ensure smooth performance on iOS and Android
 
 - [ ] Test on various screen sizes
@@ -233,7 +252,7 @@ lib/
 - ✅ All user interactions have appropriate feedback (comprehensive implementation)
 - ✅ Data persistence across app sessions (complete song management system)
 
-**Overall Progress**: **Phases 1-8 Complete** (8/12 phases) - Core functionality, state management, rectangle drawing, data persistence, video handling, sync point creation, playback synchronization, and interactive playback fully implemented.
+**Overall Progress**: **Phases 1-9 Complete** (9/13 phases) - Core functionality, state management, rectangle drawing, data persistence, video handling, sync point creation, playback synchronization, interactive playback, and song archive/share functionality fully implemented.
 
 ### 🔧 Recent Enhancements (Latest Session)
 - **Implemented PDF sharing capability**: Added ability to share PDFs with the app
@@ -508,3 +527,16 @@ lib/
   - Updated widget test expectations and descriptions for new app name
   - Revised project overview documentation in CLAUDE.md to reference "Symph"
   - Ensured consistent branding across all platform configurations and documentation
+- **Implemented complete Song Archive & Share feature**:
+  - Created comprehensive song archive data models (`SongArchive`, `RectangleData`, `MetronomeSettingsData`, `TimeSignatureData`)
+  - Built song archive service with ZIP file creation, extraction, and PDF path resolution
+  - Replaced metronome floating button with share button in top toolbar for better UI organization
+  - Moved metronome settings to popup menu alongside share option for cleaner interface
+  - Implemented functional share button with proper iOS positioning and error handling
+  - Added professional archive naming: `{songname}_symph_{timestamp}.zip` (e.g., `ftg_symph_20250925233630.zip`)
+  - Fixed PDF path resolution from relative to absolute paths for reliable file access
+  - Enhanced filename sanitization: spaces to underscores, lowercase, special character removal
+  - Created complete song data serialization including rectangles, sync points, and metronome settings
+  - Added automatic cleanup of temporary archive files with pattern-based detection
+  - Integrated `share_plus` package with proper `sharePositionOrigin` for iPad compatibility
+  - Archive contains PDF file, metadata JSON with all song data, and manifest for version tracking

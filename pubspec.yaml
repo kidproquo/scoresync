@@ -56,9 +56,16 @@ dependencies:
   
   # Sharing and intent handling
   receive_sharing_intent: ^1.8.0
+
+  # Archive creation for song sharing
+  archive: ^3.4.0
+  share_plus: ^7.2.0
   
   # Professional metronome package
   metronome: ^2.0.6
+
+  # Date formatting for archive timestamps
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:

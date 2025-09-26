@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'services/song_archive_service.dart';
 import 'widgets/score_viewer/score_viewer.dart';
 import 'widgets/video_player/youtube_player.dart';
 import 'providers/app_mode_provider.dart';
@@ -316,6 +318,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Consumer<SongProvider>(
@@ -421,6 +424,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
       }
     }
   }
+
 }
 
 class MainScreen extends StatefulWidget {
@@ -691,42 +695,15 @@ class _MainScreenState extends State<MainScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Metronome button
-                            Consumer<MetronomeProvider>(
-                              builder: (context, metronomeProvider, _) {
-                                return IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _showMetronomeSettings = !_showMetronomeSettings;
-                                    });
-                                  },
-                                  icon: Stack(
-                                    children: [
-                                      Icon(
-                                        Icons.music_note,
-                                        color: metronomeProvider.settings.isEnabled 
-                                            ? Colors.white 
-                                            : Colors.white54,
-                                        size: 20,
-                                      ),
-                                      if (metronomeProvider.isPlaying)
-                                        Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          child: Container(
-                                            width: 6,
-                                            height: 6,
-                                            decoration: const BoxDecoration(
-                                              color: Colors.green,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  tooltip: 'Metronome Settings',
-                                );
-                              },
+                            // Share button
+                            IconButton(
+                              onPressed: _shareCurrentSong,
+                              icon: const Icon(
+                                Icons.share,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              tooltip: 'Share Song',
                             ),
                             const SizedBox(width: 8),
                             
@@ -903,6 +880,14 @@ class _MainScreenState extends State<MainScreen> {
           case 'delete':
             _showDeleteSongDialog(context);
             break;
+          case 'metronome':
+            setState(() {
+              _showMetronomeSettings = !_showMetronomeSettings;
+            });
+            break;
+          case 'share':
+            _shareCurrentSong();
+            break;
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -919,6 +904,23 @@ class _MainScreenState extends State<MainScreen> {
           child: ListTile(
             leading: Icon(Icons.folder_open),
             title: Text('Load Song'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'metronome',
+          child: ListTile(
+            leading: Icon(Icons.music_note),
+            title: Text('Metronome Settings'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'share',
+          child: ListTile(
+            leading: Icon(Icons.share),
+            title: Text('Share Song'),
             contentPadding: EdgeInsets.zero,
           ),
         ),
@@ -1045,6 +1047,59 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+
+  // Share current song as archive
+  Future<void> _shareCurrentSong() async {
+    final songProvider = Provider.of<SongProvider>(context, listen: false);
+
+    if (songProvider.currentSong == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No song to share. Please load a song first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Show loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Creating song archive...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      final archiveService = SongArchiveService();
+      final archiveFile = await archiveService.createSongArchive(songProvider.currentSong!);
+
+      // Share the archive file
+      await Share.shareXFiles(
+        [XFile(archiveFile.path)],
+        text: 'Check out this Score Sync song: ${songProvider.currentSong!.name}',
+        sharePositionOrigin: const Rect.fromLTWH(0, 0, 100, 100),
+      );
+
+      developer.log('Successfully shared song archive: ${archiveFile.path}');
+
+      // Optional: Clean up temp file after a delay
+      Future.delayed(const Duration(minutes: 1), () {
+        archiveService.cleanupTempFiles();
+      });
+
+    } catch (e) {
+      developer.log('Error sharing song: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sharing song: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }
 
 class NoSongPlaceholder extends StatelessWidget {
@@ -1164,7 +1219,7 @@ class NoSongPlaceholder extends StatelessWidget {
   Future<void> _createNewSong(BuildContext context, String name) async {
     try {
       final songProvider = context.read<SongProvider>();
-      
+
       // Check if song already exists
       final exists = await SongStorageService.instance.songExists(name);
       if (exists) {
@@ -1190,4 +1245,5 @@ class NoSongPlaceholder extends StatelessWidget {
       }
     }
   }
+
 }

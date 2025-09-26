@@ -533,10 +533,21 @@ lib/
   - Replaced metronome floating button with share button in top toolbar for better UI organization
   - Moved metronome settings to popup menu alongside share option for cleaner interface
   - Implemented functional share button with proper iOS positioning and error handling
-  - Added professional archive naming: `{songname}_symph_{timestamp}.zip` (e.g., `ftg_symph_20250925233630.zip`)
+  - Added professional archive naming: `{songname}_symph_{timestamp}.zip` format with .zip extension
   - Fixed PDF path resolution from relative to absolute paths for reliable file access
   - Enhanced filename sanitization: spaces to underscores, lowercase, special character removal
   - Created complete song data serialization including rectangles, sync points, and metronome settings
   - Added automatic cleanup of temporary archive files with pattern-based detection
   - Integrated `share_plus` package with proper `sharePositionOrigin` for iPad compatibility
   - Archive contains PDF file, metadata JSON with all song data, and manifest for version tracking
+- **Implemented complete Song Archive Import feature**:
+  - Configured Android intent filters for handling shared ZIP and .symph files
+  - Set up iOS document types and UTI declarations for .symph custom file type
+  - Created iOS Share Extension with custom loading indicator UI
+  - Configured App Groups (`group.me.princesamuel.scoresync`) for data sharing between extension and main app
+  - Fixed URL scheme to use `ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)` format required by receive_sharing_intent
+  - Implemented share extension loading indicator replacing default dialog with "Opening in Symph..." message
+  - Fixed import workflow to preserve all song data (PDF path, rectangles, metronome settings)
+  - Changed from createNewSong() to direct SongStorageService.saveSong() to maintain imported data integrity
+  - Added proper App Group entitlements for both Runner and Share Extension
+  - Import now successfully loads PDF, rectangles with timestamps, and all song metadata

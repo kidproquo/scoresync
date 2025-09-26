@@ -98,6 +98,10 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
     // Initialize sharing intent stream
     _intentDataStreamFiles = ReceiveSharingIntent.instance.getMediaStream();
     _intentDataStreamFiles.listen((List<SharedMediaFile> value) {
+      developer.log('Received media stream files: ${value.length}');
+      for (final file in value) {
+        developer.log('Media file: ${file.path}, type: ${file.type}');
+      }
       if (value.isNotEmpty) {
         _handleSharedFiles(value);
       }
@@ -105,10 +109,17 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
 
     // Handle initial shared file when app is opened via sharing
     ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      developer.log('Initial media files: ${value.length}');
+      for (final file in value) {
+        developer.log('Initial media file: ${file.path}, type: ${file.type}');
+      }
       if (value.isNotEmpty) {
         _handleSharedFiles(value);
       }
     });
+
+    // Handle text sharing (for URLs from Share Extension)
+    // Note: Text sharing support may require additional configuration
     
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final songProvider = context.read<SongProvider>();
@@ -142,26 +153,41 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
     });
   }
 
+
   void _handleSharedFiles(List<SharedMediaFile> files) {
-    // Filter for PDF files only
-    final pdfFiles = files.where((file) => 
+    // Filter for PDF and ZIP files
+    final pdfFiles = files.where((file) =>
       file.path.toLowerCase().endsWith('.pdf')).toList();
-    
-    if (pdfFiles.isEmpty) {
-      developer.log('No PDF files found in shared files');
-      return;
+
+    final zipFiles = files.where((file) =>
+      file.path.toLowerCase().endsWith('.zip') ||
+      file.path.toLowerCase().endsWith('.symph')).toList();
+
+    // Prioritize Symph archives over PDF files
+    if (zipFiles.isNotEmpty) {
+      final sharedZip = zipFiles.first;
+      developer.log('Handling shared Symph archive: ${sharedZip.path}');
+
+      // Wait for app initialization to complete before showing dialog
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showSharedArchiveDialog(File(sharedZip.path));
+        }
+      });
+    } else if (pdfFiles.isNotEmpty) {
+      // Handle the first PDF file
+      final sharedPdf = pdfFiles.first;
+      developer.log('Handling shared PDF: ${sharedPdf.path}');
+
+      // Wait for app initialization to complete before showing dialog
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showSharedPdfDialog(File(sharedPdf.path));
+        }
+      });
+    } else {
+      developer.log('No PDF or ZIP files found in shared files');
     }
-    
-    // Handle the first PDF file
-    final sharedPdf = pdfFiles.first;
-    developer.log('Handling shared PDF: ${sharedPdf.path}');
-    
-    // Wait for app initialization to complete before showing dialog
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _showSharedPdfDialog(File(sharedPdf.path));
-      }
-    });
   }
 
   void _showSharedPdfDialog(File pdfFile) {
@@ -318,6 +344,102 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
     }
   }
 
+  void _showSharedArchiveDialog(File archiveFile) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Symph Song Archive'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('A Symph song archive has been shared with you:'),
+              const SizedBox(height: 8),
+              Text(
+                archiveFile.path.split('/').last,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text('Would you like to import this song?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Clear the shared intent
+                ReceiveSharingIntent.instance.reset();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _importSongFromArchive(archiveFile);
+              },
+              child: const Text('Import Song'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _importSongFromArchive(File archiveFile) async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Importing song archive...'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      final archiveService = SongArchiveService();
+      final importedSong = await archiveService.importSongArchive(archiveFile);
+
+      // Save the imported song directly
+      if (mounted) {
+        final songProvider = context.read<SongProvider>();
+
+        // Save the imported song with all its data (PDF path, rectangles, etc.)
+        await SongStorageService.instance.saveSong(importedSong);
+
+        // Load the saved song into providers
+        await songProvider.loadSong(importedSong.name);
+
+        developer.log('Successfully imported song: ${importedSong.name}');
+
+        // Check mounted again after async operations
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Successfully imported: ${importedSong.name}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+
+      // Clear the shared intent
+      ReceiveSharingIntent.instance.reset();
+
+    } catch (e) {
+      developer.log('Error importing song archive: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing archive: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

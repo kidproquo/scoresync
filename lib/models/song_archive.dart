@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'song.dart';
+import 'rectangle.dart';
+import 'metronome_settings.dart';
 
 class SongArchive {
   final String version;
@@ -69,6 +71,41 @@ class SongArchive {
 
   String toJsonString() {
     return const JsonEncoder.withIndent('  ').convert(toJson());
+  }
+
+  // Convert back to Song object (without PDF path - that needs to be set separately)
+  Song toSong({String? pdfPath}) {
+    // Convert rectangles back to DrawnRectangle objects
+    final drawnRectangles = rectangles.map((rectData) {
+      return DrawnRectangle(
+        id: rectData.id,
+        rect: rectData.rect.toRect(),
+        pageNumber: rectData.pageNumber,
+        createdAt: DateTime.now(), // Use current time since we don't store this in archive
+        timestamps: rectData.timestamps.map((ms) => Duration(milliseconds: ms)).toList(),
+      );
+    }).toList();
+
+    // Convert metronome settings back
+    final metronomeSettings = MetronomeSettings(
+      isEnabled: this.metronomeSettings.enabled,
+      bpm: this.metronomeSettings.bpm,
+      timeSignature: TimeSignature(
+        this.metronomeSettings.timeSignature.beats,
+        this.metronomeSettings.timeSignature.noteValue,
+      ),
+      countInEnabled: this.metronomeSettings.countInEnabled,
+      volume: this.metronomeSettings.volume,
+    );
+
+    return Song(
+      name: name,
+      pdfPath: pdfPath,
+      rectangles: drawnRectangles,
+      videoUrl: youtubeUrl,
+      metronomeSettings: metronomeSettings,
+      createdAt: createdAt,
+    );
   }
 }
 

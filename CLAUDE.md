@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Score Sync is a Flutter-based iOS and Android app that synchronizes YouTube videos with PDF music scores. The app allows musicians to create and follow along with synchronized sheet music and video performances.
+Symph is a Flutter-based iOS and Android app that synchronizes YouTube videos with PDF music scores. The app allows musicians to create and follow along with synchronized sheet music and video performances.
 
 ## Core Features
 

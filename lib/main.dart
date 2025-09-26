@@ -50,7 +50,7 @@ class ScoreSyncApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UiStateProvider()),
       ],
       child: MaterialApp(
-        title: 'Score Sync',
+        title: 'Symph',
         theme: ThemeData(
           brightness: Brightness.light,
           colorScheme: ColorScheme.fromSeed(

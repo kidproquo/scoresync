@@ -500,3 +500,11 @@ lib/
   - Scaled up all elements by ~25-30% to better fill the square canvas
   - Updated sync arrows color to green (#4CAF50) for better visibility
   - Increased stroke widths and adjusted positions for improved visual balance
+- **Rebranded app name from "Score Sync" to "Symph"**:
+  - Updated Flutter app title in MaterialApp configuration (lib/main.dart)
+  - Changed Android app label in AndroidManifest.xml from "Score Sync" to "Symph"
+  - Updated iOS bundle display name and bundle name in Info.plist configuration
+  - Modified pubspec.yaml description to reflect new "Symph" branding
+  - Updated widget test expectations and descriptions for new app name
+  - Revised project overview documentation in CLAUDE.md to reference "Symph"
+  - Ensured consistent branding across all platform configurations and documentation

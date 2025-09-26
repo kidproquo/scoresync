@@ -11,12 +11,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scoresync/main.dart';
 
 void main() {
-  testWidgets('Score Sync app shows split screen', (WidgetTester tester) async {
+  testWidgets('Symph app shows split screen', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const ScoreSyncApp());
 
     // Verify that the app title is shown
-    expect(find.text('Score Sync'), findsOneWidget);
+    expect(find.text('Symph'), findsOneWidget);
 
     // Verify that both placeholders are shown
     expect(find.text('Score Viewer'), findsOneWidget);

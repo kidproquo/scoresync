@@ -227,7 +227,7 @@ class RectanglePainter extends CustomPainter {
       ..strokeWidth = 1.0;
     
     // Calculate starting position (below the action buttons area)
-    const buttonSize = 24.0; // Size of delete/sync buttons
+    const buttonSize = 36.0; // Size of delete/sync buttons (increased for easier tapping)
     final startX = rectangle.rect.left + badgePadding;
     final startY = rectangle.rect.top + buttonSize + badgePadding * 2;
     

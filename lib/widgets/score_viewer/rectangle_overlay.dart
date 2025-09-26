@@ -192,7 +192,7 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     const badgeHeight = 16.0; // Reduced from 20.0 to match smaller font
     const badgePadding = 3.0; // Reduced from 4.0 for more compact badges
     const badgeSpacing = 2.0;
-    const buttonSize = 24.0; // Size of delete/sync buttons
+    const buttonSize = 36.0; // Size of delete/sync buttons (increased for easier tapping)
     
     final startX = rectangle.rect.left + badgePadding;
     final startY = rectangle.rect.top + buttonSize + badgePadding * 2;

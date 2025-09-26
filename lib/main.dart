@@ -203,7 +203,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('A PDF file has been shared with Score Sync:'),
+              Text('A PDF file has been shared with Symph:'),
               const SizedBox(height: 8),
               Text(
                 pdfFile.path.split('/').last,
@@ -455,7 +455,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Loading Score Sync...'),
+                  Text('Loading Symph...'),
                 ],
               ),
             ),
@@ -480,7 +480,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Welcome to Score Sync'),
+          title: const Text('Welcome to Symph'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -630,7 +630,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Consumer2<SongProvider, AppModeProvider>(
       builder: (context, songProvider, appModeProvider, _) {
-        final songName = songProvider.currentSongName ?? 'Score Sync';
+        final songName = songProvider.currentSongName ?? 'Symph';
         final hasSong = songProvider.currentSong != null;
         final isPlaybackMode = !appModeProvider.isDesignMode;
 
@@ -1199,7 +1199,7 @@ class _MainScreenState extends State<MainScreen> {
       // Share the archive file
       await Share.shareXFiles(
         [XFile(archiveFile.path)],
-        text: 'Check out this Score Sync song: ${songProvider.currentSong!.name}',
+        text: 'Check out this Symph song: ${songProvider.currentSong!.name}',
         sharePositionOrigin: const Rect.fromLTWH(0, 0, 100, 100),
       );
 

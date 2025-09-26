@@ -52,7 +52,7 @@ class DrawnRectangle {
     return expandedRect.contains(point);
   }
 
-  Rect getHandleRect(RectangleHandle handle, {double size = 8.0, double deleteSize = 24.0}) {
+  Rect getHandleRect(RectangleHandle handle, {double size = 8.0, double deleteSize = 36.0}) {
     switch (handle) {
       case RectangleHandle.topLeft:
         // This is now the delete button location
@@ -96,7 +96,7 @@ class DrawnRectangle {
     }
   }
 
-  RectangleHandle? getHandleAt(Offset point, {double size = 12.0, double deleteSize = 24.0}) {
+  RectangleHandle? getHandleAt(Offset point, {double size = 12.0, double deleteSize = 36.0}) {
     // Check action buttons first (they're larger)
     if (getHandleRect(RectangleHandle.delete, size: size, deleteSize: deleteSize).contains(point)) {
       return RectangleHandle.delete;

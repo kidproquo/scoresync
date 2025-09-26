@@ -551,3 +551,19 @@ lib/
   - Changed from createNewSong() to direct SongStorageService.saveSong() to maintain imported data integrity
   - Added proper App Group entitlements for both Runner and Share Extension
   - Import now successfully loads PDF, rectangles with timestamps, and all song metadata
+- **Enhanced video overlay UX**:
+  - Added "Add Video URL" button in video overlay when no video is selected
+  - Button appears with clear call-to-action when video container is visible but empty
+  - Improved discoverability of video URL editing functionality
+- **Improved sync point creation button accessibility**:
+  - Increased sync point creation button size from 24px to 36px for easier tapping on mobile devices
+  - Also increased delete button size to match (both action buttons now 36px)
+  - Follows iOS Human Interface Guidelines for minimum touch target sizes
+  - Updated button size constants across rectangle model, painter, and overlay components
+- **Completed Symph rebranding**:
+  - Updated all user-facing text from "Score Sync" to "Symph" throughout the app
+  - Changed share message text to "Check out this Symph song:"
+  - Updated PDF share dialog to reference "Symph"
+  - Changed loading screen text to "Loading Symph..."
+  - Updated welcome dialog title to "Welcome to Symph"
+  - Changed default app title to "Symph" when no song is loaded

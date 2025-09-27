@@ -178,6 +178,16 @@ class SongProvider extends ChangeNotifier {
         return;
       }
 
+      // Clear current song and all providers first (like when deleting a song)
+      _currentSong = null;
+      await SongStorageService.instance.setCurrentSong(null);
+      notifyListeners(); // Notify that current song is now null
+
+      // Wait a frame for UI to update to "No Song Selected" state
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      await _clearAllProviders();
+
       final song = Song(
         name: name,
         pdfPath: pdfPath,

@@ -22,7 +22,7 @@ class SyncPointsBar extends StatelessWidget {
     final videoProvider = context.read<VideoProvider>();
     final rectangleProvider = context.read<RectangleProvider>();
 
-    if (!videoProvider.hasVideo) {
+    if (!videoProvider.isPlayerReady) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Load a video first to create sync points'),

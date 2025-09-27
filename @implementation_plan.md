@@ -600,3 +600,12 @@ lib/
   - Added `LSHandlerRank` key with "Alternate" value to PDF Document type configuration
   - Resolved App Store validation errors 90683 (missing privacy string) and 90788 (incomplete document type)
   - App now meets all iOS App Store submission requirements for privacy and document handling
+- **Fixed sync point creation validation**:
+  - Changed sync point check from `hasVideo` to `isPlayerReady` for more accurate video state detection
+  - Prevents "Load a video first" error when video URL is loaded but player not yet ready
+  - Ensures sync points can only be created when video player is fully initialized
+- **Fixed new song creation workflow**:
+  - Added proper cleanup sequence when creating new song from menu (clears current song and all providers first)
+  - Mimics the clean state from delete workflow: sets current song to null, notifies listeners, waits for UI update
+  - Prevents video player from showing previous song's video when creating new song
+  - Ensures all providers (PDF, rectangles, video, metronome) are cleared before loading new song data

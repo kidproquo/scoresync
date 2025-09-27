@@ -589,3 +589,9 @@ lib/
   - Row is centered both horizontally and vertically within rectangle bounds
   - Updated tap detection logic to match new horizontal centered layout
   - Cleaner visual presentation: `[00:15] [00:30] [01:05]` in rectangle center
+- **Added tap-to-play/pause on video overlay**:
+  - Wrapped YoutubePlayer widget with GestureDetector for tap detection
+  - Tapping anywhere on video overlay toggles play/pause state
+  - Integrates with existing `_onPlayPause()` method for proper metronome synchronization
+  - Handles count-in timer management and state updates automatically
+  - Works seamlessly in both design and playback modes without interfering with drag functionality

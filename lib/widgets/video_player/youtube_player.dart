@@ -612,26 +612,34 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       return _buildErrorState();
     }
 
-    return YoutubePlayer(
-      key: ValueKey(_currentUrl), // Use URL as key to help with view management
-      controller: _controller!,
-      showVideoProgressIndicator: false,
-      progressIndicatorColor: Theme.of(context).colorScheme.primary,
-      // No topActions - we're using our own controls
-      onReady: () {
-        if (mounted) {
-          _loadingTimeout?.cancel();
-          setState(() {
-            _isPlayerReady = true;
-            _isLoading = false;
-            _errorMessage = null;
-          });
-          developer.log('YouTube player onReady callback');
+    return GestureDetector(
+      onTap: () {
+        // Toggle play/pause on tap
+        if (_isPlayerReady && _controller != null) {
+          _onPlayPause();
         }
       },
-      onEnded: (data) {
-        developer.log('Video ended');
-      },
+      child: YoutubePlayer(
+        key: ValueKey(_currentUrl), // Use URL as key to help with view management
+        controller: _controller!,
+        showVideoProgressIndicator: false,
+        progressIndicatorColor: Theme.of(context).colorScheme.primary,
+        // No topActions - we're using our own controls
+        onReady: () {
+          if (mounted) {
+            _loadingTimeout?.cancel();
+            setState(() {
+              _isPlayerReady = true;
+              _isLoading = false;
+              _errorMessage = null;
+            });
+            developer.log('YouTube player onReady callback');
+          }
+        },
+        onEnded: (data) {
+          developer.log('Video ended');
+        },
+      ),
     );
   }
 

@@ -21,6 +21,7 @@ import 'providers/ui_state_provider.dart';
 import 'widgets/load_song_dialog.dart';
 import 'widgets/metronome/metronome_settings_panel.dart';
 import 'widgets/score_viewer/page_controls.dart';
+import 'widgets/sync_points_bar.dart';
 import 'services/song_storage_service.dart';
 
 void main() {
@@ -938,28 +939,37 @@ class _MainScreenState extends State<MainScreen> {
           child: Consumer2<ScoreProvider, SongProvider>(
             builder: (context, scoreProvider, songProvider, _) {
               if (scoreProvider.selectedPdfFile != null && scoreProvider.totalPages > 0) {
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.7),
-                        Colors.transparent,
-                      ],
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Sync points bar (only in design mode when rectangle selected)
+                    if (!isPlaybackMode)
+                      const SyncPointsBar(),
+                    // Page controls
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.7),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                      child: PageControls(
+                        currentPage: scoreProvider.currentPageNumber,
+                        totalPages: scoreProvider.totalPages,
+                        onFirstPage: () => _goToFirstPage(context),
+                        onPreviousPage: () => _goToPreviousPage(context),
+                        onNextPage: () => _goToNextPage(context),
+                        onLastPage: () => _goToLastPage(context),
+                        onSelectPdf: () => _pickPdfFile(context),
+                        canSelectPdf: songProvider.currentSong != null,
+                        isDesignMode: !isPlaybackMode,
+                      ),
                     ),
-                  ),
-                  child: PageControls(
-                    currentPage: scoreProvider.currentPageNumber,
-                    totalPages: scoreProvider.totalPages,
-                    onFirstPage: () => _goToFirstPage(context),
-                    onPreviousPage: () => _goToPreviousPage(context),
-                    onNextPage: () => _goToNextPage(context),
-                    onLastPage: () => _goToLastPage(context),
-                    onSelectPdf: () => _pickPdfFile(context),
-                    canSelectPdf: songProvider.currentSong != null,
-                    isDesignMode: !isPlaybackMode,
-                  ),
+                  ],
                 );
               }
               return const SizedBox.shrink();

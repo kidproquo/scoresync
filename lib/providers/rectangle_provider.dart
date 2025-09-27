@@ -56,6 +56,12 @@ class RectangleProvider extends ChangeNotifier {
     _onRectanglesChanged?.call();
   }
 
+  // Public method to trigger updates when rectangle timestamps are modified
+  void updateRectangleTimestamps() {
+    notifyListeners();
+    _notifyRectanglesChanged();
+  }
+
   void startDrawing(Offset point, int pageNumber) {
     _startPoint = point;
     _drawingMode = DrawingMode.drawing;
@@ -291,9 +297,6 @@ class RectangleProvider extends ChangeNotifier {
         break;
       case RectangleHandle.delete:
         // Delete handle shouldn't resize
-        return;
-      case RectangleHandle.sync:
-        // Sync handle shouldn't resize
         return;
     }
 

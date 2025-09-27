@@ -116,9 +116,6 @@ class RectanglePainter extends CustomPainter {
 
     // Draw delete button at top-left
     _drawDeleteButton(canvas, rectangle, deleteSize);
-    
-    // Draw sync button at center of top edge
-    _drawSyncButton(canvas, rectangle, deleteSize);
   }
 
   void _drawDeleteButton(Canvas canvas, DrawnRectangle rectangle, double size) {
@@ -160,112 +157,99 @@ class RectanglePainter extends CustomPainter {
     );
   }
 
-  void _drawSyncButton(Canvas canvas, DrawnRectangle rectangle, double size) {
-    final syncRect = rectangle.getHandleRect(RectangleHandle.sync, deleteSize: size);
-    
-    // Draw blue circular background
-    final syncPaint = Paint()
-      ..color = Colors.blue
-      ..style = PaintingStyle.fill;
-    
-    final syncBorderPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    canvas.drawCircle(syncRect.center, size / 2, syncPaint);
-    canvas.drawCircle(syncRect.center, size / 2, syncBorderPaint);
-
-    // Draw sync icon (link/chain icon)
-    final iconPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-
-    final iconSize = size * 0.4;
-    final center = syncRect.center;
-    
-    // Draw chain link icon
-    final linkSize = iconSize * 0.7;
-    
-    // Left oval
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(center.dx - linkSize * 0.3, center.dy),
-        width: linkSize * 0.6,
-        height: linkSize,
-      ),
-      iconPaint,
-    );
-    
-    // Right oval
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(center.dx + linkSize * 0.3, center.dy),
-        width: linkSize * 0.6,
-        height: linkSize,
-      ),
-      iconPaint,
-    );
-  }
-
   void _drawTimestampBadges(Canvas canvas, DrawnRectangle rectangle) {
     if (rectangle.timestamps.isEmpty) return;
-    
-    const badgeHeight = 16.0; // Reduced from 20.0 to match smaller font
-    const badgePadding = 3.0; // Reduced from 4.0 for more compact badges
-    const badgeSpacing = 2.0;
-    
+
+    const badgeHeight = 16.0;
+    const badgePadding = 3.0;
+    const badgeSpacing = 4.0; // Space between badges in the row
+
     final badgePaint = Paint()
-      ..color = Colors.green.withAlpha(70) // Very transparent - about 27% opacity
+      ..color = Colors.green.withAlpha(70)
       ..style = PaintingStyle.fill;
 
     final badgeBorderPaint = Paint()
-      ..color = Colors.green.withAlpha(120) // More transparent border
+      ..color = Colors.green.withAlpha(120)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    
-    // Calculate starting position (below the action buttons area)
-    const buttonSize = 36.0; // Size of delete/sync buttons (increased for easier tapping)
-    final startX = rectangle.rect.left + badgePadding;
-    final startY = rectangle.rect.top + buttonSize + badgePadding * 2;
-    
-    double currentY = startY;
-    
-    for (int i = 0; i < rectangle.timestamps.length; i++) {
-      final timestamp = rectangle.timestamps[i];
+
+    // First pass: calculate all badge widths and total width
+    final List<double> badgeWidths = [];
+    double totalWidth = 0;
+
+    for (final timestamp in rectangle.timestamps) {
       final timeText = _formatDuration(timestamp);
-      
-      // Create text painter for measuring
+
       final textPainter = TextPainter(
         text: TextSpan(
           text: timeText,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 9, // Reduced from 11 for smaller badges
-            fontWeight: FontWeight.bold, // Slightly bolder for better readability
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
             shadows: const [
               Shadow(
                 offset: Offset(0.5, 0.5),
                 blurRadius: 2.0,
-                color: Colors.black87, // Stronger shadow for better contrast
+                color: Colors.black87,
               ),
-            ], // Add shadow for better contrast
+            ],
           ),
         ),
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
-      
+
       final badgeWidth = textPainter.width + badgePadding * 2;
+      badgeWidths.add(badgeWidth);
+      totalWidth += badgeWidth;
+    }
+
+    // Add spacing between badges to total width
+    totalWidth += badgeSpacing * (rectangle.timestamps.length - 1);
+
+    // Calculate starting X position to center the row
+    final startX = rectangle.rect.center.dx - (totalWidth / 2);
+
+    // Calculate Y position to center vertically in the rectangle
+    final startY = rectangle.rect.center.dy - (badgeHeight / 2);
+
+    // Second pass: draw badges in a horizontal row
+    double currentX = startX;
+
+    for (int i = 0; i < rectangle.timestamps.length; i++) {
+      final timestamp = rectangle.timestamps[i];
+      final timeText = _formatDuration(timestamp);
+      final badgeWidth = badgeWidths[i];
+
+      // Create text painter for drawing
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: timeText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            shadows: const [
+              Shadow(
+                offset: Offset(0.5, 0.5),
+                blurRadius: 2.0,
+                color: Colors.black87,
+              ),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+
       final badgeRect = Rect.fromLTWH(
-        startX,
-        currentY,
+        currentX,
+        startY,
         badgeWidth,
         badgeHeight,
       );
-      
+
       // Draw badge background
       canvas.drawRRect(
         RRect.fromRectAndRadius(badgeRect, const Radius.circular(10)),
@@ -275,7 +259,7 @@ class RectanglePainter extends CustomPainter {
         RRect.fromRectAndRadius(badgeRect, const Radius.circular(10)),
         badgeBorderPaint,
       );
-      
+
       // Draw text
       textPainter.paint(
         canvas,
@@ -284,13 +268,8 @@ class RectanglePainter extends CustomPainter {
           badgeRect.top + (badgeHeight - textPainter.height) / 2,
         ),
       );
-      
-      currentY += badgeHeight + badgeSpacing;
-      
-      // Don't draw badges outside the rectangle
-      if (currentY + badgeHeight > rectangle.rect.bottom - badgePadding) {
-        break;
-      }
+
+      currentX += badgeWidth + badgeSpacing;
     }
   }
 

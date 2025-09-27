@@ -567,3 +567,25 @@ lib/
   - Changed loading screen text to "Loading Symph..."
   - Updated welcome dialog title to "Welcome to Symph"
   - Changed default app title to "Symph" when no song is loaded
+- **Implemented sync points management bar**:
+  - Created new `SyncPointsBar` widget in bottom bar for design mode
+  - Added "Sync" button to create sync points at current video position
+  - Implemented horizontal scrollable list of sync point badges with delete functionality
+  - Bar only visible when rectangle is selected in design mode
+  - Gradient background matching page controls bar for visual consistency
+  - Duplicate prevention with 10ms tolerance and user feedback via SnackBars
+  - Added `updateRectangleTimestamps()` method to RectangleProvider for proper state updates
+- **Removed sync button from rectangles**:
+  - Removed blue sync button from rectangle top edge (previously centered)
+  - Deleted `RectangleHandle.sync` enum value and all related handling code
+  - Removed `_drawSyncButton()` method from rectangle painter
+  - Removed `_handleSyncButtonTap()` method from rectangle overlay
+  - Simplified rectangle UI to only show delete button at top-left corner
+  - All sync point creation now happens through dedicated sync points bar
+- **Enhanced sync point badge display**:
+  - Changed badge layout from vertical column to centered horizontal row
+  - All timestamp badges now appear on single line in center of rectangle
+  - Increased badge spacing from 2px to 4px for better readability
+  - Row is centered both horizontally and vertically within rectangle bounds
+  - Updated tap detection logic to match new horizontal centered layout
+  - Cleaner visual presentation: `[00:15] [00:30] [01:05]` in rectangle center

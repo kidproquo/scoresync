@@ -57,10 +57,6 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
         rectangleProvider.selectRectangle(rectangle);
         rectangleProvider.deleteSelectedRectangle();
         return;
-      } else if (handle == RectangleHandle.sync && isDesignMode) {
-        // Handle sync button click
-        _handleSyncButtonTap(rectangle);
-        return;
       } else if (rectangle.hasTimestamps) {
         // Check if clicking on a timestamp badge (in both design and playback mode)
         final tappedTimestamp = _getTimestampAtPoint(rectangle, localPoint);
@@ -73,7 +69,7 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
       if (isDesignMode) {
         rectangleProvider.selectRectangle(rectangle);
         
-        if (handle != null && handle != RectangleHandle.delete && handle != RectangleHandle.sync) {
+        if (handle != null && handle != RectangleHandle.delete) {
           // Start resizing for resize handles
           rectangleProvider.startResizing(localPoint, handle);
         } else {
@@ -122,50 +118,6 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     }
   }
 
-  void _handleSyncButtonTap(DrawnRectangle rectangle) {
-    final videoProvider = context.read<VideoProvider>();
-
-    if (!videoProvider.hasVideo) {
-      developer.log('No video loaded - cannot create sync point');
-      return;
-    }
-
-    // Get current video position
-    final currentPosition = videoProvider.currentPosition;
-
-    // Check for duplicate within 10ms tolerance
-    const tolerance = Duration(milliseconds: 10);
-    for (final existing in rectangle.timestamps) {
-      final difference = (currentPosition - existing).abs();
-      if (difference <= tolerance) {
-        developer.log('Sync point at ${_formatDuration(currentPosition)} is too close to existing sync point at ${_formatDuration(existing)} (within 10ms)');
-
-        // Show feedback to user via SnackBar
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Sync point already exists at ${_formatDuration(existing)}'),
-              duration: const Duration(seconds: 2),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-    }
-
-    // No duplicates found, add the timestamp
-    final updatedRectangle = rectangle.copyWith(
-      timestamps: [...rectangle.timestamps, currentPosition],
-    );
-
-    // Update rectangle in provider
-    final rectangleProvider = context.read<RectangleProvider>();
-    rectangleProvider.updateRectangle(updatedRectangle);
-
-    developer.log('Added sync point at ${_formatDuration(currentPosition)} to rectangle ${rectangle.id}');
-  }
-
   void _handleTimestampBadgeTap(Duration timestamp) {
     final videoProvider = context.read<VideoProvider>();
     final metronomeProvider = context.read<MetronomeProvider>();
@@ -188,42 +140,53 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
 
   Duration? _getTimestampAtPoint(DrawnRectangle rectangle, Offset point) {
     if (rectangle.timestamps.isEmpty) return null;
-    
-    const badgeHeight = 16.0; // Reduced from 20.0 to match smaller font
-    const badgePadding = 3.0; // Reduced from 4.0 for more compact badges
-    const badgeSpacing = 2.0;
-    const buttonSize = 36.0; // Size of delete/sync buttons (increased for easier tapping)
-    
-    final startX = rectangle.rect.left + badgePadding;
-    final startY = rectangle.rect.top + buttonSize + badgePadding * 2;
-    
-    double currentY = startY;
-    
+
+    const badgeHeight = 16.0;
+    const badgePadding = 3.0;
+    const badgeSpacing = 4.0;
+
+    // First pass: calculate all badge widths and total width (same logic as painter)
+    final List<double> badgeWidths = [];
+    double totalWidth = 0;
+
+    for (final timestamp in rectangle.timestamps) {
+      final timeText = _formatDuration(timestamp);
+      // Estimate badge width
+      final badgeWidth = timeText.length * 6.5 + badgePadding * 2;
+      badgeWidths.add(badgeWidth);
+      totalWidth += badgeWidth;
+    }
+
+    // Add spacing between badges to total width
+    totalWidth += badgeSpacing * (rectangle.timestamps.length - 1);
+
+    // Calculate starting X position to center the row
+    final startX = rectangle.rect.center.dx - (totalWidth / 2);
+
+    // Calculate Y position to center vertically in the rectangle
+    final startY = rectangle.rect.center.dy - (badgeHeight / 2);
+
+    // Second pass: check which badge was tapped
+    double currentX = startX;
+
     for (int i = 0; i < rectangle.timestamps.length; i++) {
       final timestamp = rectangle.timestamps[i];
-      final timeText = _formatDuration(timestamp);
-      
-      // Estimate badge width (simplified calculation - reduced for smaller font)
-      final badgeWidth = timeText.length * 6.5 + badgePadding * 2;
+      final badgeWidth = badgeWidths[i];
+
       final badgeRect = Rect.fromLTWH(
-        startX,
-        currentY,
+        currentX,
+        startY,
         badgeWidth,
         badgeHeight,
       );
-      
+
       if (badgeRect.contains(point)) {
         return timestamp;
       }
-      
-      currentY += badgeHeight + badgeSpacing;
-      
-      // Don't check badges outside the rectangle
-      if (currentY + badgeHeight > rectangle.rect.bottom - badgePadding) {
-        break;
-      }
+
+      currentX += badgeWidth + badgeSpacing;
     }
-    
+
     return null;
   }
 

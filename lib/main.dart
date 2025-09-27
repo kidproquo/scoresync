@@ -14,15 +14,18 @@ import 'providers/app_mode_provider.dart';
 import 'providers/score_provider.dart';
 import 'providers/video_provider.dart';
 import 'providers/sync_provider.dart';
+import 'providers/beat_sync_provider.dart';
 import 'providers/rectangle_provider.dart';
 import 'providers/song_provider.dart';
 import 'providers/metronome_provider.dart';
 import 'providers/ui_state_provider.dart';
 import 'widgets/load_song_dialog.dart';
 import 'widgets/metronome/metronome_settings_panel.dart';
+import 'widgets/metronome/beat_overlay.dart';
 import 'widgets/score_viewer/page_controls.dart';
 import 'widgets/sync_points_bar.dart';
 import 'services/song_storage_service.dart';
+import 'models/metronome_settings.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +50,7 @@ class ScoreSyncApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ScoreProvider()),
         ChangeNotifierProvider(create: (_) => VideoProvider()),
         ChangeNotifierProvider(create: (_) => SyncProvider()),
+        ChangeNotifierProvider(create: (_) => BeatSyncProvider()),
         ChangeNotifierProvider(create: (_) => RectangleProvider()),
         ChangeNotifierProvider(create: (_) => SongProvider()),
         ChangeNotifierProvider(create: (_) => MetronomeProvider()),
@@ -132,13 +136,20 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
         metronomeProvider: context.read<MetronomeProvider>(),
       );
       await songProvider.initialize();
-      
-      // Set up sync provider dependencies
+
       if (mounted) {
         final syncProvider = context.read<SyncProvider>();
         syncProvider.setDependencies(
           context.read<RectangleProvider>(),
           context.read<VideoProvider>(),
+          context.read<ScoreProvider>(),
+          context.read<AppModeProvider>(),
+        );
+
+        final beatSyncProvider = context.read<BeatSyncProvider>();
+        beatSyncProvider.setDependencies(
+          context.read<RectangleProvider>(),
+          context.read<MetronomeProvider>(),
           context.read<ScoreProvider>(),
           context.read<AppModeProvider>(),
         );
@@ -672,9 +683,12 @@ class _MainScreenState extends State<MainScreen> {
                 child: const ScoreViewer(),
               ),
             ),
-            // Video player overlay (draggable, responsive to orientation)
+            // Video player overlay OR Beat overlay (depending on mode)
             Builder(
               builder: (context) {
+                final metronomeProvider = context.watch<MetronomeProvider>();
+                final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
+
                 final screenSize = MediaQuery.of(context).size;
                 // Same size for both design and playback modes
                 final overlayWidth = isLandscape ? 420.0 : 320.0;
@@ -743,11 +757,14 @@ class _MainScreenState extends State<MainScreen> {
                           borderRadius: BorderRadius.circular(8),
                           child: Stack(
                             children: [
-                              // YouTube player - with key to prevent rebuilds during dragging
-                              YouTubePlayerWidget(
-                                key: const ValueKey('youtube_player_draggable'),
-                                showGuiControls: true,
-                              ),
+                              // Show Beat Overlay or Video Player based on mode
+                              if (isBeatMode)
+                                const BeatOverlay()
+                              else
+                                YouTubePlayerWidget(
+                                  key: const ValueKey('youtube_player_draggable'),
+                                  showGuiControls: true,
+                                ),
                               // Drag indicator
                               Positioned(
                                 top: 4,

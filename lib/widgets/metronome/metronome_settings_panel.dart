@@ -101,6 +101,10 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
+                      // Mode Selection
+                      _buildModeSelector(settings, metronomeProvider),
+                      const SizedBox(height: 16),
+
                       // Enable/Disable Toggle
                       _buildToggleRow(
                         'Metronome',
@@ -386,6 +390,57 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildModeSelector(MetronomeSettings settings, MetronomeProvider provider) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Mode',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+          ),
+        ),
+        SegmentedButton<MetronomeMode>(
+          segments: const [
+            ButtonSegment(
+              value: MetronomeMode.video,
+              label: Text('Video', style: TextStyle(fontSize: 12)),
+            ),
+            ButtonSegment(
+              value: MetronomeMode.beat,
+              label: Text('Beat', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+          selected: {settings.mode},
+          onSelectionChanged: (Set<MetronomeMode> selection) {
+            provider.updateSettings(
+              settings.copyWith(mode: selection.first),
+            );
+          },
+          style: ButtonStyle(
+            backgroundColor: WidgetStateProperty.resolveWith<Color>(
+              (Set<WidgetState> states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.blue;
+                }
+                return Colors.white12;
+              },
+            ),
+            foregroundColor: WidgetStateProperty.resolveWith<Color>(
+              (Set<WidgetState> states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return Colors.white70;
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

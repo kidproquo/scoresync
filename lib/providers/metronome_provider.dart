@@ -14,6 +14,11 @@ class MetronomeProvider extends ChangeNotifier {
   bool _isPreviewing = false;
   double _playbackRate = 1.0;
 
+  // Beat tracking for Beat Mode
+  StreamSubscription<int>? _tickSubscription;
+  int _totalBeats = 0;
+  Function(int beat)? _onBeat;
+
   // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
 
@@ -22,49 +27,33 @@ class MetronomeProvider extends ChangeNotifier {
   bool get isCountingIn => _isCountingIn;
   bool get isPreviewing => _isPreviewing;
   int get currentBeat => _currentBeat;
+  int get totalBeats => _totalBeats;
+  double get playbackRate => _playbackRate;
+  int get effectiveBPM => (_settings.bpm * _playbackRate).round();
+  int get currentMeasure => _totalBeats > 0
+      ? ((_totalBeats - 1) ~/ _settings.timeSignature.numerator) + 1
+      : 1;
 
   MetronomeProvider() {
+    _metronome = Metronome();
+    _countInMetronome = _metronome;
     _initializeMetronome();
-    _initializeCountInMetronome();
   }
 
   Future<void> _initializeMetronome() async {
     try {
-      _metronome = Metronome();
-
-      // Initialize with distinct click and accent sounds
       await _metronome.init(
-        'assets/woodblock_high44_wav.wav', // Regular click sound (beats 2, 3, 4)
-        accentedPath: 'assets/claves44_wav.wav', // Accent sound (beat 1)
-        bpm: _settings.bpm,
-        volume: (_settings.volume * 100).round(), // Convert 0-1 to 0-100
-        timeSignature: _settings.timeSignature.numerator,
-        enableTickCallback: false,  // No callback needed for regular metronome
-      );
-
-      developer.log('Main metronome initialized');
-    } catch (e) {
-      developer.log('Error initializing metronome: $e');
-    }
-  }
-
-  Future<void> _initializeCountInMetronome() async {
-    try {
-      _countInMetronome = Metronome();
-
-      // Initialize count-in metronome with same sounds as main metronome
-      await _countInMetronome.init(
-        'assets/woodblock_high44_wav.wav', // Regular click sound (beats 2, 3, 4)
-        accentedPath: 'assets/claves44_wav.wav', // Accent sound (beat 1)
+        'assets/woodblock_high44_wav.wav',
+        accentedPath: 'assets/claves44_wav.wav',
         bpm: _settings.bpm,
         volume: (_settings.volume * 100).round(),
         timeSignature: _settings.timeSignature.numerator,
-        enableTickCallback: false,  // No callback needed - using manual timing
+        enableTickCallback: true,
       );
 
-      developer.log('Count-in metronome initialized with same config as main');
+      developer.log('Metronome initialized with enableTickCallback=true');
     } catch (e) {
-      developer.log('Error initializing count-in metronome: $e');
+      developer.log('Error initializing metronome: $e');
     }
   }
 
@@ -144,6 +133,7 @@ class MetronomeProvider extends ChangeNotifier {
   void setPlaybackRate(double rate) {
     if (_playbackRate != rate) {
       _playbackRate = rate;
+      notifyListeners();
       // If metronome is playing, restart with new rate
       if (isPlaying) {
         developer.log('Playback rate changed to $rate, restarting metronome');
@@ -152,41 +142,74 @@ class MetronomeProvider extends ChangeNotifier {
     }
   }
 
-  void startMetronome() {
+  void startMetronome({bool isSeeking = false}) {
     if (!_settings.isEnabled) return;
 
-    stopMetronome(); // Ensure clean start
+    final isResuming = _totalBeats > 0 && !isSeeking;
 
-    // Apply playback rate to BPM
+    if (isResuming) {
+      final beatsPerMeasure = _settings.timeSignature.numerator;
+      final currentMeasureStartBeat = ((currentMeasure - 1) * beatsPerMeasure) + 1;
+      _totalBeats = currentMeasureStartBeat - 1;
+      _currentBeat = 0;
+      developer.log('Resuming from start of measure $currentMeasure (totalBeats reset to $_totalBeats)');
+    }
+
+    stopMetronome();
+
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
 
-    developer.log('Starting metronome: BPM=${_settings.bpm}, playbackRate=$_playbackRate, effectiveBPM=$effectiveBPM, timeSignature=${_settings.timeSignature.displayString}');
+    developer.log('${isResuming ? "Resuming" : "Starting"} metronome: BPM=${_settings.bpm}, playbackRate=$_playbackRate, effectiveBPM=$effectiveBPM, timeSignature=${_settings.timeSignature.displayString}');
 
-    // Update metronome with all settings
     _metronome.setBPM(effectiveBPM);
     _metronome.setTimeSignature(_settings.timeSignature.numerator);
     _metronome.setVolume((_settings.volume * 100).round());
 
     developer.log('Main metronome configured: BPM=$effectiveBPM, timeSignature=${_settings.timeSignature.numerator}, volume=${(_settings.volume * 100).round()}');
 
-    // Start the metronome
+    _currentBeat = 1;
+
+    _tickSubscription?.cancel();
+    _tickSubscription = _metronome.tickStream.listen(
+      (int tick) {
+        _totalBeats++;
+        _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
+        _onBeat?.call(_totalBeats);
+        notifyListeners();
+      },
+    );
+
     _metronome.play();
     _isPlaying = true;
     notifyListeners();
 
-    developer.log('Metronome started at $effectiveBPM effective BPM (base: ${_settings.bpm} BPM × $_playbackRate rate)');
+    developer.log('Metronome ${isResuming ? "resumed" : "started"} at $effectiveBPM effective BPM (beat $_currentBeat of measure $currentMeasure)');
   }
 
   void stopMetronome() {
-    _metronome.stop();
-    _countInMetronome.stop();
+    _metronome.pause();
+    _countInMetronome.pause();
     _isPlaying = false;
-    _isPreviewing = false;  // Also stop preview if running
-    _currentBeat = 0;
+    _isPreviewing = false;
     _isCountingIn = false;
     notifyListeners();
 
-    developer.log('Metronome stopped');
+    developer.log('Metronome paused (beat counter preserved: $_totalBeats)');
+  }
+
+  void resetMetronome() {
+    _tickSubscription?.cancel();
+    _tickSubscription = null;
+    _metronome.stop();
+    _countInMetronome.stop();
+    _isPlaying = false;
+    _isPreviewing = false;
+    _currentBeat = 0;
+    _totalBeats = 0;
+    _isCountingIn = false;
+    notifyListeners();
+
+    developer.log('Metronome stopped, beat counter reset');
   }
 
   Future<void> startCountIn() async {
@@ -261,6 +284,31 @@ class MetronomeProvider extends ChangeNotifier {
     _onCountInBeat = callback;
   }
 
+  void setOnBeatCallback(Function(int)? callback) {
+    _onBeat = callback;
+  }
+
+  void seekToMeasure(int measureNumber) {
+    final wasPlaying = _isPlaying;
+
+    if (wasPlaying) {
+      _metronome.stop();
+      _isPlaying = false;
+    }
+
+    final beatsPerMeasure = _settings.timeSignature.numerator;
+    final targetBeat = (measureNumber - 1) * beatsPerMeasure;
+
+    _totalBeats = targetBeat;
+    _currentBeat = 0;
+    developer.log('Seeked to measure $measureNumber (total beat $_totalBeats)');
+    notifyListeners();
+
+    if (wasPlaying) {
+      startMetronome(isSeeking: true);
+    }
+  }
+
   // Toggle preview metronome - continuous play/stop
   void togglePreview() {
     if (_isPreviewing) {
@@ -323,6 +371,7 @@ class MetronomeProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _tickSubscription?.cancel();
     stopMetronome();
     stopPreview();
     super.dispose();

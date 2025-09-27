@@ -1,16 +1,20 @@
+enum MetronomeMode { video, beat }
+
 class MetronomeSettings {
   final bool isEnabled;
   final int bpm;
   final TimeSignature timeSignature;
   final bool countInEnabled;
   final double volume;
-  
+  final MetronomeMode mode;
+
   MetronomeSettings({
     this.isEnabled = false,
     this.bpm = 120,
     this.timeSignature = const TimeSignature(4, 4),
     this.countInEnabled = true,
     this.volume = 0.7,
+    this.mode = MetronomeMode.video,
   });
 
   MetronomeSettings copyWith({
@@ -19,6 +23,7 @@ class MetronomeSettings {
     TimeSignature? timeSignature,
     bool? countInEnabled,
     double? volume,
+    MetronomeMode? mode,
   }) {
     return MetronomeSettings(
       isEnabled: isEnabled ?? this.isEnabled,
@@ -26,6 +31,7 @@ class MetronomeSettings {
       timeSignature: timeSignature ?? this.timeSignature,
       countInEnabled: countInEnabled ?? this.countInEnabled,
       volume: volume ?? this.volume,
+      mode: mode ?? this.mode,
     );
   }
 
@@ -36,18 +42,29 @@ class MetronomeSettings {
       'timeSignature': timeSignature.toJson(),
       'countInEnabled': countInEnabled,
       'volume': volume,
+      'mode': mode.name,
     };
   }
 
   factory MetronomeSettings.fromJson(Map<String, dynamic> json) {
+    MetronomeMode mode = MetronomeMode.video;
+    if (json['mode'] != null) {
+      try {
+        mode = MetronomeMode.values.byName(json['mode']);
+      } catch (e) {
+        mode = MetronomeMode.video;
+      }
+    }
+
     return MetronomeSettings(
       isEnabled: json['isEnabled'] ?? false,
       bpm: json['bpm'] ?? 120,
-      timeSignature: json['timeSignature'] != null 
+      timeSignature: json['timeSignature'] != null
           ? TimeSignature.fromJson(json['timeSignature'])
           : const TimeSignature(4, 4),
       countInEnabled: json['countInEnabled'] ?? true,
       volume: json['volume'] ?? 0.7,
+      mode: mode,
     );
   }
 }

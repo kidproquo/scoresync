@@ -615,3 +615,19 @@ lib/
   - Edit URL button conditionally hidden in playback mode using `if (includeEditButton)` guard
   - Refactored control building into shared `_buildControlButtons()` method with mode parameter
   - Both modes now have consistent two-row layout: controls row on top, progress bar and time on bottom
+- **Implemented Beat Mode for metronome-based synchronization**:
+  - Added Beat mode alongside existing Timestamp mode in MetronomeSettings
+  - Created BeatOverlay widget with measure display, beat visualization, and transport controls
+  - Implemented beat tracking in MetronomeProvider using tick stream from metronome package
+  - Added measure and beat number tracking with currentMeasure and currentBeat getters
+  - Enhanced rectangles with beatNumbers list for Beat mode sync points
+  - Added BeatSyncProvider for managing active rectangles during Beat mode playback
+  - Implemented measure-based navigation controls (±1 and ±4 measures)
+  - Fixed metronome singleton initialization to properly enable tick callbacks
+  - Split pause/reset functionality: stopMetronome() preserves counter, resetMetronome() clears it
+  - Implemented resume-from-beat-1 logic to maintain accent pattern consistency
+  - Added playback rate control in beat overlay with effective BPM display
+  - Optimized layout to prevent overflow: reduced spacing, compact controls (18px icons, 28px buttons)
+  - Enhanced BPM display to show effective BPM and calculation when rate ≠ 1.0x
+  - Fixed seekToMeasure() with isSeeking parameter to bypass resume logic during navigation
+  - Added immediate UI updates via notifyListeners() when playback rate changes

@@ -9,6 +9,7 @@ class DrawnRectangle {
   final double strokeWidth;
   bool isSelected;
   List<Duration> timestamps;
+  List<int> beatNumbers;
 
   DrawnRectangle({
     required this.id,
@@ -19,7 +20,9 @@ class DrawnRectangle {
     this.strokeWidth = 2.0,
     this.isSelected = false,
     List<Duration>? timestamps,
-  }) : timestamps = timestamps ?? [];
+    List<int>? beatNumbers,
+  }) : timestamps = timestamps ?? [],
+       beatNumbers = beatNumbers ?? [];
 
   DrawnRectangle copyWith({
     String? id,
@@ -30,6 +33,7 @@ class DrawnRectangle {
     double? strokeWidth,
     bool? isSelected,
     List<Duration>? timestamps,
+    List<int>? beatNumbers,
   }) {
     return DrawnRectangle(
       id: id ?? this.id,
@@ -40,6 +44,7 @@ class DrawnRectangle {
       strokeWidth: strokeWidth ?? this.strokeWidth,
       isSelected: isSelected ?? this.isSelected,
       timestamps: timestamps ?? List.from(this.timestamps),
+      beatNumbers: beatNumbers ?? List.from(this.beatNumbers),
     );
   }
 
@@ -131,6 +136,19 @@ class DrawnRectangle {
     timestamps.clear();
   }
 
+  void addBeatNumber(int beat) {
+    if (!beatNumbers.contains(beat)) {
+      beatNumbers.add(beat);
+      beatNumbers.sort();
+    }
+  }
+
+  void removeBeatNumber(int beat) {
+    beatNumbers.remove(beat);
+  }
+
+  bool get hasBeatNumbers => beatNumbers.isNotEmpty;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -148,6 +166,7 @@ class DrawnRectangle {
                (color.b * 255).round(),
       'strokeWidth': strokeWidth,
       'timestamps': timestamps.map((t) => t.inMilliseconds).toList(),
+      'beatNumbers': beatNumbers,
     };
   }
 
@@ -168,6 +187,9 @@ class DrawnRectangle {
       timestamps: (json['timestamps'] as List<dynamic>)
           .map((ms) => Duration(milliseconds: ms as int))
           .toList(),
+      beatNumbers: (json['beatNumbers'] as List<dynamic>?)
+          ?.map((beat) => beat as int)
+          .toList() ?? [],
     );
   }
 }

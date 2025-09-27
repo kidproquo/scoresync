@@ -9,7 +9,7 @@ import 'app_mode_provider.dart';
 /// Provider for managing sync points and playback synchronization
 class SyncProvider extends ChangeNotifier {
   final TimestampTree _timestampTree = TimestampTree();
-  SyncPoint? _activeSyncPoint;
+  SyncPoint<Duration>? _activeSyncPoint;
   
   // Dependencies
   RectangleProvider? _rectangleProvider;
@@ -17,8 +17,8 @@ class SyncProvider extends ChangeNotifier {
   ScoreProvider? _scoreProvider;
   AppModeProvider? _appModeProvider;
 
-  SyncPoint? get activeSyncPoint => _activeSyncPoint;
-  List<SyncPoint> get allSyncPoints => _timestampTree.getAllInOrder();
+  SyncPoint<Duration>? get activeSyncPoint => _activeSyncPoint;
+  List<SyncPoint<Duration>> get allSyncPoints => _timestampTree.getAllInOrder();
   bool get hasSyncPoints => !_timestampTree.isEmpty;
 
   void setDependencies(
@@ -82,8 +82,8 @@ class SyncProvider extends ChangeNotifier {
     for (final rectangle in allRectangles) {
       developer.log('Sync: Rectangle ${rectangle.id} has ${rectangle.timestamps.length} timestamps');
       for (final timestamp in rectangle.timestamps) {
-        final syncPoint = SyncPoint(
-          timestamp: timestamp,
+        final syncPoint = SyncPoint<Duration>(
+          key: timestamp,
           rectangle: rectangle,
           pageNumber: rectangle.pageNumber,
         );
@@ -116,9 +116,8 @@ class SyncProvider extends ChangeNotifier {
       _activeSyncPoint = newActivePoint;
       
       if (newActivePoint != null) {
-        developer.log('🎯 Active sync: page ${newActivePoint.pageNumber} at ${_formatDuration(newActivePoint.timestamp)} (video at ${_formatDuration(currentPosition)})');
-        
-        // Notify rectangle provider to highlight the active rectangle
+        developer.log('🎯 Active sync: page ${newActivePoint.pageNumber} at ${_formatDuration(newActivePoint.key)} (video at ${_formatDuration(currentPosition)})');
+
         _rectangleProvider!.setActiveRectangle(newActivePoint.rectangle.id);
         
         // Check if we need to change pages
@@ -146,45 +145,41 @@ class SyncProvider extends ChangeNotifier {
     }
   }
 
-  /// Get all sync points for a specific page
-  List<SyncPoint> getSyncPointsForPage(int pageNumber) {
+  List<SyncPoint<Duration>> getSyncPointsForPage(int pageNumber) {
     return allSyncPoints.where((point) => point.pageNumber == pageNumber).toList();
   }
 
-  /// Get sync points in a time range
-  List<SyncPoint> getSyncPointsInRange(Duration start, Duration end) {
+  List<SyncPoint<Duration>> getSyncPointsInRange(Duration start, Duration end) {
     return _timestampTree.findInRange(start, end);
   }
 
-  /// Find the next sync point after current position
-  SyncPoint? getNextSyncPoint() {
+  SyncPoint<Duration>? getNextSyncPoint() {
     if (_videoProvider == null) return null;
-    
+
     final currentPosition = _videoProvider!.currentPosition;
     final allPoints = allSyncPoints;
-    
+
     for (final point in allPoints) {
-      if (point.timestamp > currentPosition) {
+      if (point.key > currentPosition) {
         return point;
       }
     }
-    
+
     return null;
   }
 
-  /// Find the previous sync point before current position
-  SyncPoint? getPreviousSyncPoint() {
+  SyncPoint<Duration>? getPreviousSyncPoint() {
     if (_videoProvider == null) return null;
-    
+
     final currentPosition = _videoProvider!.currentPosition;
     final allPoints = allSyncPoints.reversed;
-    
+
     for (final point in allPoints) {
-      if (point.timestamp < currentPosition) {
+      if (point.key < currentPosition) {
         return point;
       }
     }
-    
+
     return null;
   }
 

@@ -8,6 +8,8 @@ class RectanglePainter extends CustomPainter {
   final Size widgetSize;
   final bool isDesignMode;
   final String? activeRectangleId;
+  final bool isBeatMode;
+  final int beatsPerMeasure;
 
   RectanglePainter({
     required this.rectangles,
@@ -16,6 +18,8 @@ class RectanglePainter extends CustomPainter {
     required this.widgetSize,
     required this.isDesignMode,
     this.activeRectangleId,
+    required this.isBeatMode,
+    required this.beatsPerMeasure,
   });
 
   @override
@@ -79,16 +83,60 @@ class RectanglePainter extends CustomPainter {
       _drawHandles(canvas, rectangle);
     }
 
-    // Draw timestamp badges inside selected rectangles OR in playback mode for rectangles with timestamps
-    if ((rectangle.isSelected && isDesignMode) || (!isDesignMode && rectangle.hasTimestamps)) {
-      if (rectangle.hasTimestamps) {
-        _drawTimestampBadges(canvas, rectangle);
+    if (isBeatMode) {
+      if ((rectangle.isSelected && isDesignMode) || (!isDesignMode && rectangle.hasBeatNumbers)) {
+        if (rectangle.hasBeatNumbers) {
+          _drawBeatBadges(canvas, rectangle);
+        }
+      }
+
+      if (!rectangle.isSelected && rectangle.hasBeatNumbers && isDesignMode) {
+        _drawBeatIndicator(canvas, rectangle);
+      }
+    } else {
+      if ((rectangle.isSelected && isDesignMode) || (!isDesignMode && rectangle.hasTimestamps)) {
+        if (rectangle.hasTimestamps) {
+          _drawTimestampBadges(canvas, rectangle);
+        }
+      }
+
+      if (!rectangle.isSelected && rectangle.hasTimestamps && isDesignMode) {
+        _drawIndicator(canvas, rectangle, Colors.green, rectangle.timestamps.length);
       }
     }
+  }
 
-    // Draw timestamp indicator if rectangle has timestamps (when not selected in design mode)
-    if (!rectangle.isSelected && rectangle.hasTimestamps && isDesignMode) {
-      _drawTimestampIndicator(canvas, rectangle);
+  void _drawIndicator(Canvas canvas, DrawnRectangle rectangle, Color color, int count) {
+    final indicatorPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final indicatorRadius = 4.0;
+    final indicatorPosition = Offset(
+      rectangle.rect.right - indicatorRadius - 4,
+      rectangle.rect.top + indicatorRadius + 4,
+    );
+
+    canvas.drawCircle(indicatorPosition, indicatorRadius, indicatorPaint);
+
+    if (count > 1) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: '$count',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        indicatorPosition - Offset(textPainter.width / 2, textPainter.height / 2),
+      );
     }
   }
 
@@ -284,9 +332,120 @@ class RectanglePainter extends CustomPainter {
     return '$minutes:$seconds';
   }
 
-  void _drawTimestampIndicator(Canvas canvas, DrawnRectangle rectangle) {
+  void _drawBeatBadges(Canvas canvas, DrawnRectangle rectangle) {
+    if (rectangle.beatNumbers.isEmpty) return;
+
+    const badgeHeight = 16.0;
+    const badgePadding = 3.0;
+    const badgeSpacing = 4.0;
+
+    final badgePaint = Paint()
+      ..color = Colors.purple.withAlpha(70)
+      ..style = PaintingStyle.fill;
+
+    final badgeBorderPaint = Paint()
+      ..color = Colors.purple.withAlpha(120)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final List<double> badgeWidths = [];
+    double totalWidth = 0;
+
+    for (final beatNumber in rectangle.beatNumbers) {
+      final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+      final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+      final beatText = 'M$measureNumber:B$beatInMeasure';
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: beatText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            shadows: const [
+              Shadow(
+                offset: Offset(0.5, 0.5),
+                blurRadius: 2.0,
+                color: Colors.black87,
+              ),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+
+      final badgeWidth = textPainter.width + badgePadding * 2;
+      badgeWidths.add(badgeWidth);
+      totalWidth += badgeWidth;
+    }
+
+    totalWidth += badgeSpacing * (rectangle.beatNumbers.length - 1);
+
+    final startX = rectangle.rect.center.dx - (totalWidth / 2);
+    final startY = rectangle.rect.center.dy - (badgeHeight / 2);
+
+    double currentX = startX;
+
+    for (int i = 0; i < rectangle.beatNumbers.length; i++) {
+      final beatNumber = rectangle.beatNumbers[i];
+      final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+      final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+      final beatText = 'M$measureNumber:B$beatInMeasure';
+      final badgeWidth = badgeWidths[i];
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: beatText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            shadows: const [
+              Shadow(
+                offset: Offset(0.5, 0.5),
+                blurRadius: 2.0,
+                color: Colors.black87,
+              ),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+
+      final badgeRect = Rect.fromLTWH(
+        currentX,
+        startY,
+        badgeWidth,
+        badgeHeight,
+      );
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(badgeRect, const Radius.circular(10)),
+        badgePaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(badgeRect, const Radius.circular(10)),
+        badgeBorderPaint,
+      );
+
+      textPainter.paint(
+        canvas,
+        Offset(
+          badgeRect.left + badgePadding,
+          badgeRect.top + (badgeHeight - textPainter.height) / 2,
+        ),
+      );
+
+      currentX += badgeWidth + badgeSpacing;
+    }
+  }
+
+  void _drawBeatIndicator(Canvas canvas, DrawnRectangle rectangle) {
     final indicatorPaint = Paint()
-      ..color = Colors.green
+      ..color = Colors.purple
       ..style = PaintingStyle.fill;
 
     final indicatorRadius = 4.0;
@@ -297,11 +456,10 @@ class RectanglePainter extends CustomPainter {
 
     canvas.drawCircle(indicatorPosition, indicatorRadius, indicatorPaint);
 
-    // Draw timestamp count if multiple
-    if (rectangle.timestamps.length > 1) {
+    if (rectangle.beatNumbers.length > 1) {
       final textPainter = TextPainter(
         text: TextSpan(
-          text: '${rectangle.timestamps.length}',
+          text: '${rectangle.beatNumbers.length}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 10,
@@ -310,7 +468,7 @@ class RectanglePainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       );
-      
+
       textPainter.layout();
       textPainter.paint(
         canvas,
@@ -325,7 +483,10 @@ class RectanglePainter extends CustomPainter {
         oldDelegate.currentDrawing != currentDrawing ||
         oldDelegate.pdfPageSize != pdfPageSize ||
         oldDelegate.widgetSize != widgetSize ||
-        oldDelegate.isDesignMode != isDesignMode;
+        oldDelegate.isDesignMode != isDesignMode ||
+        oldDelegate.isBeatMode != isBeatMode ||
+        oldDelegate.beatsPerMeasure != beatsPerMeasure ||
+        oldDelegate.activeRectangleId != activeRectangleId;
   }
 }
 
@@ -336,6 +497,8 @@ class RectangleOverlay extends StatelessWidget {
   final Size widgetSize;
   final bool isDesignMode;
   final Widget child;
+  final bool isBeatMode;
+  final int beatsPerMeasure;
 
   const RectangleOverlay({
     super.key,
@@ -345,6 +508,8 @@ class RectangleOverlay extends StatelessWidget {
     required this.widgetSize,
     required this.isDesignMode,
     required this.child,
+    required this.isBeatMode,
+    required this.beatsPerMeasure,
   });
 
   @override
@@ -361,6 +526,8 @@ class RectangleOverlay extends StatelessWidget {
                 pdfPageSize: pdfPageSize,
                 widgetSize: widgetSize,
                 isDesignMode: isDesignMode,
+                isBeatMode: isBeatMode,
+                beatsPerMeasure: beatsPerMeasure,
               ),
             ),
           ),

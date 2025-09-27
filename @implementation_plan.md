@@ -595,3 +595,8 @@ lib/
   - Integrates with existing `_onPlayPause()` method for proper metronome synchronization
   - Handles count-in timer management and state updates automatically
   - Works seamlessly in both design and playback modes without interfering with drag functionality
+- **Fixed iOS App Store submission requirements**:
+  - Added `NSPhotoLibraryUsageDescription` key to Info.plist for photo library access permission
+  - Added `LSHandlerRank` key with "Alternate" value to PDF Document type configuration
+  - Resolved App Store validation errors 90683 (missing privacy string) and 90788 (incomplete document type)
+  - App now meets all iOS App Store submission requirements for privacy and document handling

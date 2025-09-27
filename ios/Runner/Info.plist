@@ -46,8 +46,6 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	
-	<!-- Document types and file sharing support -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -65,6 +63,8 @@
 			<array>
 				<string>com.adobe.pdf</string>
 			</array>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
 		</dict>
 		<dict>
 			<key>CFBundleTypeExtensions</key>
@@ -103,14 +103,10 @@
 			<string>Owner</string>
 		</dict>
 	</array>
-	
-	<!-- Support for opening PDFs and ZIP files -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>UISupportsDocumentBrowser</key>
 	<true/>
-
-	<!-- Declare custom UTI for Symph archives -->
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -138,12 +134,8 @@
 			</dict>
 		</dict>
 	</array>
-
-	<!-- App Group Configuration for Share Extension -->
 	<key>AppGroupId</key>
 	<string>group.me.princesamuel.scoresync</string>
-
-	<!-- URL Schemes for deep linking from Share Extension -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -156,5 +148,8 @@
 		</dict>
 	</array>
 
+	<!-- Privacy - Photo Library Usage Description -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Symph needs access to your photo library to allow you to share song archives and sheet music.</string>
 </dict>
 </plist>

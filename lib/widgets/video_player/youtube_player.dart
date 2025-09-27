@@ -925,100 +925,83 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                           ),
                         ),
                       ],
-                    ) : Row(
-                      // Playback mode - single row layout
+                    ) : Column(
+                      // Playback mode - same layout as design mode but without edit button
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Play/pause button
-                        IconButton(
-                          icon: Icon(
-                            _isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: _onPlayPause,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 24,
-                            minHeight: 24,
-                          ),
+                        // Top row - main controls
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final controls = _buildPlaybackControls();
+                            // Use SingleChildScrollView for narrow containers
+                            final isVeryNarrow = constraints.maxWidth <= 320;
+                            if (isVeryNarrow) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(children: controls),
+                              );
+                            } else {
+                              return Row(children: controls);
+                            }
+                          },
                         ),
-                        // Current time
-                        Text(
-                          _formatDuration(_currentPosition),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        // Progress bar
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: SizedBox(
-                              height: 16,
-                              child: SliderTheme(
-                                data: SliderThemeData(
-                                  trackHeight: 1.5,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 4,
-                                  ),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 8,
-                                  ),
-                                  activeTrackColor: Theme.of(context).colorScheme.primary,
-                                  inactiveTrackColor: Colors.grey[600],
-                                  thumbColor: Theme.of(context).colorScheme.primary,
-                                  overlayColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                        // Bottom row - progress bar and time
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Row(
+                            children: [
+                              // Current time
+                              Text(
+                                _formatDuration(_currentPosition),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
                                 ),
-                                child: Slider(
-                                  value: _totalDuration.inSeconds > 0
-                                      ? _currentPosition.inSeconds.toDouble()
-                                      : 0.0,
-                                  min: 0.0,
-                                  max: _totalDuration.inSeconds.toDouble(),
-                                  onChanged: (value) {
-                                    _onSeek(Duration(seconds: value.toInt()));
-                                  },
+                              ),
+                              // Progress bar
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: SizedBox(
+                                  height: 16,
+                                  child: SliderTheme(
+                                    data: SliderThemeData(
+                                      trackHeight: 1.5,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 4,
+                                      ),
+                                      overlayShape: const RoundSliderOverlayShape(
+                                        overlayRadius: 8,
+                                      ),
+                                      activeTrackColor: Theme.of(context).colorScheme.primary,
+                                      inactiveTrackColor: Colors.grey[600],
+                                      thumbColor: Theme.of(context).colorScheme.primary,
+                                      overlayColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                                    ),
+                                    child: Slider(
+                                      value: _totalDuration.inSeconds > 0
+                                          ? _currentPosition.inSeconds.toDouble()
+                                          : 0.0,
+                                      min: 0.0,
+                                      max: _totalDuration.inSeconds.toDouble(),
+                                      onChanged: (value) {
+                                        _onSeek(Duration(seconds: value.toInt()));
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                        // Total time
-                        Text(
-                          _formatDuration(_totalDuration),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        // Speed control
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: DropdownButton<double>(
-                            value: _playbackRate,
-                            onChanged: (double? value) {
-                              if (value != null) _onPlaybackRateChanged(value);
-                            },
-                            items: const [
-                              DropdownMenuItem(value: 0.5, child: Text('0.5x', style: TextStyle(fontSize: 11))),
-                              DropdownMenuItem(value: 0.6, child: Text('0.6x', style: TextStyle(fontSize: 11))),
-                              DropdownMenuItem(value: 0.7, child: Text('0.7x', style: TextStyle(fontSize: 11))),
-                              DropdownMenuItem(value: 0.8, child: Text('0.8x', style: TextStyle(fontSize: 11))),
-                              DropdownMenuItem(value: 0.9, child: Text('0.9x', style: TextStyle(fontSize: 11))),
-                              DropdownMenuItem(value: 1.0, child: Text('1.0x', style: TextStyle(fontSize: 11))),
-                              DropdownMenuItem(value: 1.2, child: Text('1.2x', style: TextStyle(fontSize: 11))),
+                            // Total time
+                            Text(
+                              _formatDuration(_totalDuration),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
                             ],
-                            underline: Container(),
-                            isDense: true,
-                            icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
-                            dropdownColor: Colors.black87,
-                            style: const TextStyle(color: Colors.white, fontSize: 11),
                           ),
                         ),
                       ],
@@ -1100,23 +1083,34 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     );
   }
 
+  List<Widget> _buildPlaybackControls() {
+    // Same as design controls but without edit button
+    return _buildControlButtons(includeEditButton: false);
+  }
+
   List<Widget> _buildDesignControls() {
+    // Design controls with edit button
+    return _buildControlButtons(includeEditButton: true);
+  }
+
+  List<Widget> _buildControlButtons({required bool includeEditButton}) {
     return [
-      // Edit button
-      IconButton(
-        icon: const Icon(
-          Icons.edit,
-          color: Colors.white,
-          size: 20,
+      // Edit button (only in design mode)
+      if (includeEditButton)
+        IconButton(
+          icon: const Icon(
+            Icons.edit,
+            color: Colors.white,
+            size: 20,
+          ),
+          onPressed: _showEditUrlDialog,
+          padding: const EdgeInsets.all(1),
+          constraints: const BoxConstraints(
+            minWidth: 30,
+            minHeight: 30,
+          ),
+          tooltip: 'Edit YouTube URL',
         ),
-        onPressed: _showEditUrlDialog,
-        padding: const EdgeInsets.all(1),
-        constraints: const BoxConstraints(
-          minWidth: 30,
-          minHeight: 30,
-        ),
-        tooltip: 'Edit YouTube URL',
-      ),
       // 10s backward button
       IconButton(
         icon: const Icon(

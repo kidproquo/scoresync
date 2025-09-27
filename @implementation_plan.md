@@ -609,3 +609,9 @@ lib/
   - Mimics the clean state from delete workflow: sets current song to null, notifies listeners, waits for UI update
   - Prevents video player from showing previous song's video when creating new song
   - Ensures all providers (PDF, rectangles, video, metronome) are cleared before loading new song data
+- **Unified video overlay controls for both modes**:
+  - Changed playback mode video overlay to same size as design mode (420×280 landscape, 320×180 portrait)
+  - Playback mode now has full control layout matching design mode (10s skip, 1s skip, play/pause, stop, speed control)
+  - Edit URL button conditionally hidden in playback mode using `if (includeEditButton)` guard
+  - Refactored control building into shared `_buildControlButtons()` method with mode parameter
+  - Both modes now have consistent two-row layout: controls row on top, progress bar and time on bottom

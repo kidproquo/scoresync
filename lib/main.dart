@@ -676,12 +676,9 @@ class _MainScreenState extends State<MainScreen> {
             Builder(
               builder: (context) {
                 final screenSize = MediaQuery.of(context).size;
-                final overlayWidth = isLandscape
-                    ? (isPlaybackMode ? 240.0 : 420.0)  // Original sizes in landscape
-                    : (isPlaybackMode ? 280.0 : 320.0); // Smaller fixed widths in portrait
-                final overlayHeight = isLandscape
-                    ? (isPlaybackMode ? 135.0 : 280.0)  // Original heights in landscape
-                    : (isPlaybackMode ? 157.0 : 180.0); // Maintain 16:9 aspect ratio in portrait
+                // Same size for both design and playback modes
+                final overlayWidth = isLandscape ? 420.0 : 320.0;
+                final overlayHeight = isLandscape ? 280.0 : 180.0;
 
                 // Calculate default position if not set
                 final defaultX = screenSize.width - overlayWidth - 20;

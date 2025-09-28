@@ -31,6 +31,7 @@ class SongArchive {
         id: rectangle.id,
         rect: RectData.fromRect(rectangle.rect),
         timestamps: rectangle.timestamps.map((d) => d.inMilliseconds).toList(),
+        beatNumbers: rectangle.beatNumbers,
       );
       rectanglesList.add(rectangleData);
     }
@@ -83,6 +84,7 @@ class SongArchive {
         pageNumber: rectData.pageNumber,
         createdAt: DateTime.now(), // Use current time since we don't store this in archive
         timestamps: rectData.timestamps.map((ms) => Duration(milliseconds: ms)).toList(),
+        beatNumbers: rectData.beatNumbers,
       );
     }).toList();
 
@@ -96,6 +98,7 @@ class SongArchive {
       ),
       countInEnabled: this.metronomeSettings.countInEnabled,
       volume: this.metronomeSettings.volume,
+      mode: this.metronomeSettings.mode == 'beat' ? MetronomeMode.beat : MetronomeMode.video,
     );
 
     return Song(
@@ -114,12 +117,14 @@ class RectangleData {
   final String id;
   final RectData rect;
   final List<int> timestamps;
+  final List<int> beatNumbers;
 
   const RectangleData({
     required this.pageNumber,
     required this.id,
     required this.rect,
     required this.timestamps,
+    required this.beatNumbers,
   });
 
   Map<String, dynamic> toJson() {
@@ -128,6 +133,7 @@ class RectangleData {
       'id': id,
       'rect': rect.toJson(),
       'timestamps': timestamps,
+      'beatNumbers': beatNumbers,
     };
   }
 
@@ -137,6 +143,7 @@ class RectangleData {
       id: json['id'],
       rect: RectData.fromJson(json['rect']),
       timestamps: List<int>.from(json['timestamps']),
+      beatNumbers: List<int>.from(json['beatNumbers'] ?? []),
     );
   }
 }
@@ -192,6 +199,7 @@ class MetronomeSettingsData {
   final bool countInEnabled;
   final double volume;
   final bool enabled;
+  final String mode;
 
   const MetronomeSettingsData({
     required this.bpm,
@@ -199,6 +207,7 @@ class MetronomeSettingsData {
     required this.countInEnabled,
     required this.volume,
     required this.enabled,
+    required this.mode,
   });
 
   factory MetronomeSettingsData.fromMetronomeSettings(dynamic metronomeSettings) {
@@ -209,6 +218,7 @@ class MetronomeSettingsData {
       countInEnabled: metronomeSettings.countInEnabled,
       volume: metronomeSettings.volume,
       enabled: metronomeSettings.isEnabled,
+      mode: metronomeSettings.mode.name,
     );
   }
 
@@ -219,6 +229,7 @@ class MetronomeSettingsData {
       'countInEnabled': countInEnabled,
       'volume': volume,
       'enabled': enabled,
+      'mode': mode,
     };
   }
 
@@ -229,6 +240,7 @@ class MetronomeSettingsData {
       countInEnabled: json['countInEnabled'],
       volume: json['volume'].toDouble(),
       enabled: json['enabled'],
+      mode: json['mode'] ?? 'video',
     );
   }
 }

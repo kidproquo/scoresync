@@ -664,3 +664,8 @@ lib/
 - **Fixed sync point creation when metronome is stopped**:
   - Sync points created when stopped now default to beat 1 (M1:B1) instead of beat 0 (M0:B0)
   - Ensures first sync point always references the first beat of the first measure
+- **Added Beat Mode support to song archives**:
+  - Added `beatNumbers` field to RectangleData for serializing beat sync points
+  - Added `mode` field to MetronomeSettingsData for preserving Beat/Video mode selection
+  - Archives now properly export and import Beat Mode songs with all beat sync points intact
+  - Backward compatible: old archives default to empty beatNumbers and 'video' mode

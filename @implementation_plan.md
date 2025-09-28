@@ -661,3 +661,6 @@ lib/
   - Reduced rectangle border thickness to 0.5× in playback mode for cleaner score view
   - Active/highlighted rectangles in playback mode now show no border, only light yellow fill (alpha: 80)
   - Design mode rectangle rendering completely unchanged (full borders, handles, all features intact)
+- **Fixed sync point creation when metronome is stopped**:
+  - Sync points created when stopped now default to beat 1 (M1:B1) instead of beat 0 (M0:B0)
+  - Ensures first sync point always references the first beat of the first measure

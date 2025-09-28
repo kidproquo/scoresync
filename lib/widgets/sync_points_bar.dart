@@ -28,7 +28,8 @@ class SyncPointsBar extends StatelessWidget {
     final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
 
     if (isBeatMode) {
-      final currentBeat = metronomeProvider.totalBeats;
+      // When stopped (totalBeats = 0), use beat 1 (M1:B1)
+      final currentBeat = metronomeProvider.totalBeats == 0 ? 1 : metronomeProvider.totalBeats;
 
       if (rectangle.beatNumbers.contains(currentBeat)) {
         ScaffoldMessenger.of(context).showSnackBar(

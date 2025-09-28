@@ -105,6 +105,10 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                       _buildModeSelector(settings, metronomeProvider),
                       const SizedBox(height: 16),
 
+                      // Count-in Toggle (only for Beat Mode)
+                      _buildCountInToggle(settings, metronomeProvider),
+                      const SizedBox(height: 16),
+
                       // Enable/Disable Toggle
                       _buildToggleRow(
                         'Metronome',
@@ -112,21 +116,13 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                         (value) => metronomeProvider.toggleEnabled(),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // BPM Slider
                       _buildBPMSlider(context, settings, metronomeProvider),
                       const SizedBox(height: 16),
-                      
+
                       // Time Signature Selector
                       _buildTimeSignatureSelector(context, settings, metronomeProvider),
-                      const SizedBox(height: 16),
-                      
-                      // Count-in Toggle
-                      _buildToggleRow(
-                        'Count-in',
-                        settings.countInEnabled,
-                        (value) => metronomeProvider.setCountInEnabled(value),
-                      ),
                       const SizedBox(height: 16),
                       
                       // Volume Slider
@@ -390,6 +386,30 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCountInToggle(MetronomeSettings settings, MetronomeProvider provider) {
+    final isBeatMode = settings.mode == MetronomeMode.beat;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Count-in',
+          style: TextStyle(
+            color: isBeatMode ? Colors.white : Colors.white38,
+            fontSize: 16,
+          ),
+        ),
+        Switch(
+          value: settings.countInEnabled,
+          onChanged: isBeatMode
+              ? (value) => provider.setCountInEnabled(value)
+              : null,
+          activeColor: Colors.blue,
+        ),
+      ],
     );
   }
 

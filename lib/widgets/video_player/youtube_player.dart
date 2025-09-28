@@ -408,46 +408,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         // Set playback rate before starting metronome
         _metronomeProvider?.setPlaybackRate(_playbackRate);
 
-        if (_metronomeProvider?.settings.countInEnabled ?? false) {
-          // Show count-in overlay
-          setState(() {
-            _showCountIn = true;
-          });
-
-          // Set callback to hide overlay and start video when count-in completes
-          _metronomeProvider?.setOnCountInBeatCallback((beat) {
-            developer.log('Count-in beat callback: $beat');
-
-            // Beat 0 is the special signal for "start now" (first beat of next measure)
-            if (beat == 0) {
-              // Hide count-in overlay immediately
-              if (mounted && context.mounted) {
-                setState(() {
-                  _showCountIn = false;
-                });
-                // Start video immediately - this is precisely on beat 1 of the next measure
-                if (_controller != null && _isPlayerReady) {
-                  _controller!.play();
-                  developer.log('Video started on beat 1 of next measure');
-                }
-              }
-            }
-          });
-
-          // Start count-in, which will automatically start the main metronome
-          developer.log('Starting count-in with playback rate: $_playbackRate');
-          _metronomeProvider?.startCountIn().then((_) {
-            developer.log('Count-in sequence completed');
-          }).catchError((error) {
-            developer.log('Error in count-in sequence: $error');
-          });
-        } else {
-          // Start metronome without count-in
-          developer.log('Starting metronome with playback rate: $_playbackRate');
-          _metronomeProvider?.startMetronome();
-          // Start video immediately
-          _controller!.play();
-        }
+        // Start metronome without count-in (count-in only used in Beat Mode)
+        developer.log('Starting metronome with playback rate: $_playbackRate');
+        _metronomeProvider?.startMetronome();
+        // Start video immediately
+        _controller!.play();
       } else {
         // No metronome, just play video
         _controller!.play();

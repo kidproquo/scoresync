@@ -142,10 +142,11 @@ class MetronomeProvider extends ChangeNotifier {
     }
   }
 
-  void startMetronome({bool isSeeking = false}) {
+  void startMetronome({bool isSeeking = false, bool isPlaybackMode = false}) {
     if (!_settings.isEnabled) return;
 
     final isResuming = _totalBeats > 0 && !isSeeking;
+    final isBeatMode = _settings.mode == MetronomeMode.beat;
 
     if (isResuming) {
       final beatsPerMeasure = _settings.timeSignature.numerator;
@@ -153,6 +154,12 @@ class MetronomeProvider extends ChangeNotifier {
       _totalBeats = currentMeasureStartBeat - 1;
       _currentBeat = 0;
       developer.log('Resuming from start of measure $currentMeasure (totalBeats reset to $_totalBeats)');
+    }
+
+    // If Beat Mode, playback mode, and count-in enabled, start with count-in
+    if (isBeatMode && isPlaybackMode && _settings.countInEnabled) {
+      _startWithCountIn();
+      return;
     }
 
     stopMetronome();
@@ -172,9 +179,11 @@ class MetronomeProvider extends ChangeNotifier {
     _tickSubscription?.cancel();
     _tickSubscription = _metronome.tickStream.listen(
       (int tick) {
-        _totalBeats++;
-        _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
-        _onBeat?.call(_totalBeats);
+        if (!_isCountingIn) {
+          _totalBeats++;
+          _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
+          _onBeat?.call(_totalBeats);
+        }
         notifyListeners();
       },
     );
@@ -184,6 +193,63 @@ class MetronomeProvider extends ChangeNotifier {
     notifyListeners();
 
     developer.log('Metronome ${isResuming ? "resumed" : "started"} at $effectiveBPM effective BPM (beat $_currentBeat of measure $currentMeasure)');
+  }
+
+  void _startWithCountIn() {
+    stopMetronome();
+
+    _isCountingIn = true;
+    _isPlaying = true;
+    _currentBeat = 0;
+    notifyListeners();
+
+    final effectiveBPM = (_settings.bpm * _playbackRate).round();
+    final beatsPerMeasure = _settings.timeSignature.numerator;
+
+    developer.log('Starting count-in for $beatsPerMeasure beats at $effectiveBPM BPM');
+
+    _metronome.setBPM(effectiveBPM);
+    _metronome.setTimeSignature(_settings.timeSignature.numerator);
+    _metronome.setVolume((_settings.volume * 100).round());
+
+    int countInBeatsPlayed = 0;
+    bool countInComplete = false;
+
+    _tickSubscription?.cancel();
+    _tickSubscription = _metronome.tickStream.listen(
+      (int tick) {
+        if (_isCountingIn && !countInComplete) {
+          countInBeatsPlayed++;
+          _currentBeat = countInBeatsPlayed;
+          notifyListeners();
+          developer.log('Count-in beat: $countInBeatsPlayed/$beatsPerMeasure');
+
+          if (countInBeatsPlayed >= beatsPerMeasure) {
+            // Mark count-in as complete, but don't exit yet
+            countInComplete = true;
+            developer.log('Count-in measure complete, will exit on next tick');
+          }
+        } else if (_isCountingIn && countInComplete) {
+          // Exit count-in mode now
+          _isCountingIn = false;
+          _currentBeat = 1;
+          _totalBeats++;
+          _onBeat?.call(_totalBeats);
+          notifyListeners();
+          developer.log('Exited count-in, starting normal playback');
+        } else {
+          _totalBeats++;
+          _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
+          _onBeat?.call(_totalBeats);
+          notifyListeners();
+        }
+      },
+    );
+
+    _metronome.play();
+    notifyListeners();
+
+    developer.log('Count-in started');
   }
 
   void stopMetronome() {

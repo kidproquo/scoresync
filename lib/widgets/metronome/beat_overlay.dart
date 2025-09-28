@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/metronome_provider.dart';
 import '../../providers/app_mode_provider.dart';
+import 'count_in_overlay.dart';
 
 class BeatOverlay extends StatelessWidget {
   const BeatOverlay({super.key});
@@ -20,7 +21,7 @@ class BeatOverlay extends StatelessWidget {
                 if (metronomeProvider.isPlaying) {
                   metronomeProvider.stopMetronome();
                 } else {
-                  metronomeProvider.startMetronome();
+                  metronomeProvider.startMetronome(isPlaybackMode: !isDesignMode);
                 }
               },
               child: Container(
@@ -38,6 +39,12 @@ class BeatOverlay extends StatelessWidget {
                 ),
               ),
             ),
+            // Count-in overlay
+            if (metronomeProvider.isCountingIn)
+              CountInOverlay(
+                currentBeat: metronomeProvider.currentBeat,
+                totalBeats: metronomeProvider.settings.timeSignature.numerator,
+              ),
             // Controls overlay at bottom
             Positioned(
               left: 0,
@@ -66,6 +73,10 @@ class BeatOverlay extends StatelessWidget {
     final beatsPerMeasure = provider.settings.timeSignature.numerator;
     final currentBeat = provider.currentBeat;
 
+    // Adjust size and spacing based on number of beats
+    final circleSize = beatsPerMeasure > 8 ? 16.0 : 20.0;
+    final horizontalMargin = beatsPerMeasure > 8 ? 4.0 : 8.0;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(beatsPerMeasure, (index) {
@@ -74,9 +85,9 @@ class BeatOverlay extends StatelessWidget {
         final isAccented = beatNumber == 1;
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          width: 20,
-          height: 20,
+          margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+          width: circleSize,
+          height: circleSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isCurrentBeat
@@ -84,7 +95,7 @@ class BeatOverlay extends StatelessWidget {
               : Colors.grey[700],
             border: Border.all(
               color: Colors.white,
-              width: isCurrentBeat ? 3 : 1,
+              width: isCurrentBeat ? 2 : 1,
             ),
           ),
         );
@@ -208,7 +219,7 @@ class BeatOverlay extends StatelessWidget {
               if (provider.isPlaying) {
                 provider.stopMetronome();
               } else {
-                provider.startMetronome();
+                provider.startMetronome(isPlaybackMode: !isDesignMode);
               }
             },
             padding: const EdgeInsets.all(4),

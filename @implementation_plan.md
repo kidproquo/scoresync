@@ -634,3 +634,13 @@ lib/
   - Removed metronome playing requirement for Beat mode sync point creation
   - Allow beat sync points to be created at any time using current beat counter
   - Fixed 4-pixel overflow during dragging by adjusting bottom padding to 46px
+  - Implemented count-in for Beat Mode with visual overlay and beat counter preservation
+  - Count-in triggers on every play/resume in Beat Mode playback mode when enabled
+  - Beat counter doesn't increment during count-in, only after count-in completes
+  - Fixed count-in display to show all beats including the last beat before transitioning
+  - Count-in only available in Beat Mode, not in Video/Timestamp mode
+  - Removed all count-in logic from video player (Video mode no longer uses count-in)
+  - Made beat visualization responsive: smaller circles (16px) for 9/8 and 12/8 time signatures
+  - Reduced spacing (4px) for larger time signatures to prevent overflow
+  - Repositioned count-in toggle under mode selector, only enabled when Beat Mode selected
+  - Count-in toggle shows grayed out and disabled when Video mode is active

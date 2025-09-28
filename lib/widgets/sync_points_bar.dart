@@ -28,26 +28,6 @@ class SyncPointsBar extends StatelessWidget {
     final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
 
     if (isBeatMode) {
-      if (!metronomeProvider.settings.isEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Enable metronome first to create beat sync points'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
-      if (!metronomeProvider.isPlaying) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Start metronome first to create beat sync points'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
       final currentBeat = metronomeProvider.totalBeats;
 
       if (rectangle.beatNumbers.contains(currentBeat)) {

@@ -631,3 +631,6 @@ lib/
   - Enhanced BPM display to show effective BPM and calculation when rate ≠ 1.0x
   - Fixed seekToMeasure() with isSeeking parameter to bypass resume logic during navigation
   - Added immediate UI updates via notifyListeners() when playback rate changes
+  - Removed metronome playing requirement for Beat mode sync point creation
+  - Allow beat sync points to be created at any time using current beat counter
+  - Fixed 4-pixel overflow during dragging by adjusting bottom padding to 46px

@@ -33,7 +33,7 @@ class BeatOverlay extends StatelessWidget {
                     _buildBeatVisualization(metronomeProvider),
                     const SizedBox(height: 8),
                     _buildBPMDisplay(metronomeProvider),
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 46),
                   ],
                 ),
               ),

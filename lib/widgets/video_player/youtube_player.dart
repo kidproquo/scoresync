@@ -222,13 +222,13 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
 
         // Set a timeout to handle cases where player never becomes ready
-        _loadingTimeout = Timer(const Duration(seconds: 10), () {
+        _loadingTimeout = Timer(const Duration(seconds: 30), () {
           if (mounted && context.mounted && !_isPlayerReady && _currentUrl == url) {
-            developer.log('YouTube player loading timeout for: $url');
             setState(() {
               _errorMessage = 'Video failed to load. Please check the URL or try again.';
               _isLoading = false;
             });
+            developer.log('YouTube player loading timeout after 30s: $url');
           }
         });
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 import '../utils/timestamp_tree.dart';
+import '../models/metronome_settings.dart';
 import 'rectangle_provider.dart';
 import 'metronome_provider.dart';
 import 'score_provider.dart';
@@ -49,7 +50,11 @@ class BeatSyncProvider extends ChangeNotifier {
 
   void _rebuildSyncPoints() {
     if (_rectangleProvider == null) {
-      developer.log('BeatSync: Cannot rebuild - RectangleProvider is null');
+      return;
+    }
+
+    // Only rebuild if in Beat Mode
+    if (_metronomeProvider != null && _metronomeProvider!.settings.mode != MetronomeMode.beat) {
       return;
     }
 
@@ -62,16 +67,13 @@ class BeatSyncProvider extends ChangeNotifier {
     }
 
     if (currentSyncCount == expectedSyncCount) {
-      developer.log('BeatSync: Skipping rebuild - sync count unchanged ($currentSyncCount)');
       return;
     }
 
     _beatTree.clear();
-    developer.log('BeatSync: Found ${allRectangles.length} total rectangles');
 
     int syncPointCount = 0;
     for (final rectangle in allRectangles) {
-      developer.log('BeatSync: Rectangle ${rectangle.id} has ${rectangle.beatNumbers.length} beat numbers');
       for (final beatNumber in rectangle.beatNumbers) {
         final syncPoint = SyncPoint<int>(
           key: beatNumber,
@@ -83,7 +85,9 @@ class BeatSyncProvider extends ChangeNotifier {
       }
     }
 
-    developer.log('Rebuilt beat tree with $syncPointCount sync points from ${allRectangles.length} rectangles');
+    if (syncPointCount > 0) {
+      developer.log('Rebuilt beat tree with $syncPointCount sync points from ${allRectangles.length} rectangles');
+    }
     notifyListeners();
   }
 

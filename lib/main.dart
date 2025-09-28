@@ -687,6 +687,7 @@ class _MainScreenState extends State<MainScreen> {
             Builder(
               builder: (context) {
                 final metronomeProvider = context.watch<MetronomeProvider>();
+                final videoProvider = context.watch<VideoProvider>();
                 final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
 
                 final screenSize = MediaQuery.of(context).size;
@@ -700,6 +701,9 @@ class _MainScreenState extends State<MainScreen> {
 
                 final currentX = _videoOverlayX ?? defaultX;
                 final currentY = _videoOverlayY ?? defaultY;
+
+                // Hide controls overlay if video has error
+                final showControlsOverlay = isBeatMode || !videoProvider.hasError;
 
                 return Positioned(
                   left: currentX,
@@ -763,7 +767,7 @@ class _MainScreenState extends State<MainScreen> {
                               else
                                 YouTubePlayerWidget(
                                   key: const ValueKey('youtube_player_draggable'),
-                                  showGuiControls: true,
+                                  showGuiControls: showControlsOverlay,
                                 ),
                               // Drag indicator
                               Positioned(

@@ -669,3 +669,12 @@ lib/
   - Added `mode` field to MetronomeSettingsData for preserving Beat/Video mode selection
   - Archives now properly export and import Beat Mode songs with all beat sync points intact
   - Backward compatible: old archives default to empty beatNumbers and 'video' mode
+- **Reduced logging noise and improved video loading**:
+  - BeatSyncProvider now only rebuilds in Beat Mode, eliminating excessive logs in Video Mode
+  - Removed verbose BeatSync rebuild logs that appeared on every rectangle change
+  - Increased YouTube player loading timeout from 10 to 30 seconds
+  - Moved timeout log to only appear after error state is set for cleaner console output
+- **Fixed video error state UX**:
+  - Video controls overlay now hidden when video fails to load
+  - Allows users to tap the retry button without controls blocking interaction
+  - Controls still visible for Beat Mode and when video loads successfully

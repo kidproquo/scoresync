@@ -657,3 +657,7 @@ lib/
   - Delete button only active for selected rectangles
   - Implemented seekToBeat() method for accurate beat-level seeking
   - Fixed seek-to-beat accuracy when paused: display shows correct beat, resuming plays from correct position
+- **Enhanced playback mode rectangle rendering**:
+  - Reduced rectangle border thickness to 0.5× in playback mode for cleaner score view
+  - Active/highlighted rectangles in playback mode now show no border, only light yellow fill (alpha: 80)
+  - Design mode rectangle rendering completely unchanged (full borders, handles, all features intact)

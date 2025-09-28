@@ -50,32 +50,33 @@ class RectanglePainter extends CustomPainter {
 
   void _drawRectangle(Canvas canvas, DrawnRectangle rectangle) {
     final isActive = activeRectangleId == rectangle.id;
-    
-    final paint = Paint()
-      ..color = rectangle.isSelected 
-          ? rectangle.color.withAlpha(255)
-          : isActive
-              ? Colors.yellow.withAlpha(255)  // Highlight active rectangles in yellow
-              : rectangle.color.withAlpha(180)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isActive 
-          ? rectangle.strokeWidth * 2  // Thicker border for active
-          : rectangle.strokeWidth;
 
-    canvas.drawRect(rectangle.rect, paint);
-
-    // Draw fill for selected or active rectangles
-    if (rectangle.isSelected) {
+    // In playback mode, active rectangles have no border, just fill
+    if (isActive && !isDesignMode) {
       final fillPaint = Paint()
-        ..color = rectangle.color.withAlpha(30)
+        ..color = Colors.yellow.withAlpha(80)
         ..style = PaintingStyle.fill;
       canvas.drawRect(rectangle.rect, fillPaint);
-    } else if (isActive && !isDesignMode) {
-      // Highlight active rectangle during playback
-      final fillPaint = Paint()
-        ..color = Colors.yellow.withAlpha(50)
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(rectangle.rect, fillPaint);
+    } else {
+      // Draw border for non-active rectangles or design mode
+      final paint = Paint()
+        ..color = rectangle.isSelected
+            ? rectangle.color.withAlpha(255)
+            : rectangle.color.withAlpha(180)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = isDesignMode
+            ? rectangle.strokeWidth
+            : rectangle.strokeWidth * 0.5;  // Thinner border in playback mode
+
+      canvas.drawRect(rectangle.rect, paint);
+
+      // Draw fill for selected rectangles in design mode
+      if (rectangle.isSelected) {
+        final fillPaint = Paint()
+          ..color = rectangle.color.withAlpha(30)
+          ..style = PaintingStyle.fill;
+        canvas.drawRect(rectangle.rect, fillPaint);
+      }
     }
 
     // Draw handles for selected rectangles in design mode

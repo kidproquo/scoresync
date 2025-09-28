@@ -143,10 +143,12 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   void startMetronome({bool isSeeking = false, bool isPlaybackMode = false}) {
-    if (!_settings.isEnabled) return;
+    final isBeatMode = _settings.mode == MetronomeMode.beat;
+
+    // Only check isEnabled in Video mode; Beat mode can always start
+    if (!_settings.isEnabled && !isBeatMode) return;
 
     final isResuming = _totalBeats > 0 && !isSeeking;
-    final isBeatMode = _settings.mode == MetronomeMode.beat;
 
     if (isResuming) {
       final beatsPerMeasure = _settings.timeSignature.numerator;
@@ -371,6 +373,28 @@ class MetronomeProvider extends ChangeNotifier {
     notifyListeners();
 
     if (wasPlaying) {
+      startMetronome(isSeeking: true);
+    }
+  }
+
+  void seekToBeat(int beatNumber) {
+    final wasPlaying = _isPlaying;
+
+    if (wasPlaying) {
+      _metronome.stop();
+      _isPlaying = false;
+    }
+
+    // Set to actual beat number for display
+    _totalBeats = beatNumber;
+    _currentBeat = beatNumber == 0 ? 0 : ((beatNumber - 1) % _settings.timeSignature.numerator) + 1;
+    developer.log('Seeked to beat $beatNumber (totalBeats set to $_totalBeats, currentBeat=$_currentBeat)');
+    notifyListeners();
+
+    if (wasPlaying) {
+      // When resuming, we need to back up one beat so it starts on the target beat
+      _totalBeats = beatNumber > 0 ? beatNumber - 1 : 0;
+      _currentBeat = 0;
       startMetronome(isSeeking: true);
     }
   }

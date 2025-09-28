@@ -352,9 +352,14 @@ class RectanglePainter extends CustomPainter {
     double totalWidth = 0;
 
     for (final beatNumber in rectangle.beatNumbers) {
-      final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
-      final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
-      final beatText = 'M$measureNumber:B$beatInMeasure';
+      final String beatText;
+      if (beatNumber == 0) {
+        beatText = 'M0:B0';
+      } else {
+        final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+        final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+        beatText = 'M$measureNumber:B$beatInMeasure';
+      }
 
       final textPainter = TextPainter(
         text: TextSpan(
@@ -390,9 +395,14 @@ class RectanglePainter extends CustomPainter {
 
     for (int i = 0; i < rectangle.beatNumbers.length; i++) {
       final beatNumber = rectangle.beatNumbers[i];
-      final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
-      final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
-      final beatText = 'M$measureNumber:B$beatInMeasure';
+      final String beatText;
+      if (beatNumber == 0) {
+        beatText = 'M0:B0';
+      } else {
+        final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+        final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+        beatText = 'M$measureNumber:B$beatInMeasure';
+      }
       final badgeWidth = badgeWidths[i];
 
       final textPainter = TextPainter(

@@ -55,11 +55,11 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     if (rectangle != null) {
       final handle = rectangle.getHandleAt(localPoint);
       
-      if (handle == RectangleHandle.delete && isDesignMode) {
-        rectangleProvider.selectRectangle(rectangle);
+      if (handle == RectangleHandle.delete && isDesignMode && rectangle.isSelected) {
         rectangleProvider.deleteSelectedRectangle();
         return;
-      } else if (rectangle.hasTimestamps || rectangle.hasBeatNumbers) {
+      } else if ((rectangle.hasTimestamps || rectangle.hasBeatNumbers) && (!isDesignMode || rectangle.isSelected)) {
+        // Only respond to badge taps if in playback mode OR if rectangle is selected in design mode
         final metronomeProvider = context.read<MetronomeProvider>();
         final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
 
@@ -152,15 +152,19 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     developer.log('Beat badge tapped: seeking to beat $beatNumber');
 
     final beatsPerMeasure = metronomeProvider.settings.timeSignature.numerator;
-    final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
 
-    metronomeProvider.seekToMeasure(measureNumber);
+    // Calculate which measure this beat is in for logging
+    final measureNumber = beatNumber == 0 ? 0 : ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+    final beatInMeasure = beatNumber == 0 ? 0 : ((beatNumber - 1) % beatsPerMeasure) + 1;
+
+    // Seek to the exact beat (one before, so when play starts it's on this beat)
+    metronomeProvider.seekToBeat(beatNumber);
 
     if (metronomeProvider.isPlaying) {
       metronomeProvider.stopMetronome();
     }
 
-    developer.log('Metronome reset to measure $measureNumber - press play to start');
+    developer.log('Metronome set to M$measureNumber:B$beatInMeasure (beat $beatNumber) - press play to start');
   }
 
   int? _getBeatNumberAtPoint(DrawnRectangle rectangle, Offset point, MetronomeProvider metronomeProvider) {
@@ -175,9 +179,14 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     double totalWidth = 0;
 
     for (final beatNumber in rectangle.beatNumbers) {
-      final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
-      final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
-      final beatText = 'M$measureNumber:B$beatInMeasure';
+      final String beatText;
+      if (beatNumber == 0) {
+        beatText = 'M0:B0';
+      } else {
+        final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+        final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+        beatText = 'M$measureNumber:B$beatInMeasure';
+      }
       final badgeWidth = beatText.length * 6.5 + badgePadding * 2;
       badgeWidths.add(badgeWidth);
       totalWidth += badgeWidth;

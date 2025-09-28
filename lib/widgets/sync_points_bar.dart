@@ -188,8 +188,15 @@ class SyncPointsBar extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final beatNumber = selectedRectangle.beatNumbers[index];
                               final beatsPerMeasure = metronomeProvider.settings.timeSignature.numerator;
-                              final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
-                              final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+
+                              final String displayText;
+                              if (beatNumber == 0) {
+                                displayText = 'M0:B0';
+                              } else {
+                                final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+                                final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
+                                displayText = 'M$measureNumber:B$beatInMeasure';
+                              }
 
                               return Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -205,7 +212,7 @@ class SyncPointsBar extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      'M$measureNumber:B$beatInMeasure',
+                                      displayText,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,

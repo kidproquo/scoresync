@@ -644,3 +644,16 @@ lib/
   - Reduced spacing (4px) for larger time signatures to prevent overflow
   - Repositioned count-in toggle under mode selector, only enabled when Beat Mode selected
   - Count-in toggle shows grayed out and disabled when Video mode is active
+  - Fixed touch target sizes for all Beat Mode controls to 44×44px (iOS standard)
+  - Replaced play/pause IconButton with Material + InkWell for better touch detection
+  - Added HitTestBehavior.opaque to main GestureDetector for reliable tap-to-play/pause
+  - Excluded controls area from main tap gesture using Positioned.fill(bottom: 60)
+  - Wrapped CountInOverlay with IgnorePointer to prevent touch interference
+  - Beat Mode can always start regardless of isEnabled setting (only enforced in Video mode)
+  - Hid metronome enable/disable toggle when Beat Mode is selected
+  - Made all metronome controls (BPM, time signature, volume) always enabled in Beat Mode
+  - Fixed beat 0 display to show M0:B0 instead of incorrect M1:B4
+  - Beat badge taps only respond on selected rectangles in design mode
+  - Delete button only active for selected rectangles
+  - Implemented seekToBeat() method for accurate beat-level seeking
+  - Fixed seek-to-beat accuracy when paused: display shows correct beat, resuming plays from correct position

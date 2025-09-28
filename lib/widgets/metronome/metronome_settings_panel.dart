@@ -109,13 +109,15 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                       _buildCountInToggle(settings, metronomeProvider),
                       const SizedBox(height: 16),
 
-                      // Enable/Disable Toggle
-                      _buildToggleRow(
-                        'Metronome',
-                        settings.isEnabled,
-                        (value) => metronomeProvider.toggleEnabled(),
-                      ),
-                      const SizedBox(height: 16),
+                      // Enable/Disable Toggle (only for Video Mode)
+                      if (settings.mode == MetronomeMode.video) ...[
+                        _buildToggleRow(
+                          'Metronome',
+                          settings.isEnabled,
+                          (value) => metronomeProvider.toggleEnabled(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // BPM Slider
                       _buildBPMSlider(context, settings, metronomeProvider),
@@ -195,7 +197,7 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
             min: 40,
             max: 240,
             divisions: 200,
-            onChanged: settings.isEnabled 
+            onChanged: (settings.isEnabled || settings.mode == MetronomeMode.beat)
                 ? (value) => provider.setBPM(value.round())
                 : null,
           ),
@@ -223,7 +225,7 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
             return Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: settings.isEnabled 
+                onTap: (settings.isEnabled || settings.mode == MetronomeMode.beat)
                     ? () => provider.setTimeSignature(ts)
                     : null,
                 borderRadius: BorderRadius.circular(8),
@@ -233,13 +235,13 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected 
-                        ? Colors.blue 
+                    color: isSelected
+                        ? Colors.blue
                         : Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isSelected 
-                          ? Colors.blue 
+                      color: isSelected
+                          ? Colors.blue
                           : Colors.white30,
                       width: 1,
                     ),
@@ -247,11 +249,11 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                   child: Text(
                     ts.displayString,
                     style: TextStyle(
-                      color: isSelected || !settings.isEnabled
-                          ? Colors.white 
+                      color: isSelected || !(settings.isEnabled || settings.mode == MetronomeMode.beat)
+                          ? Colors.white
                           : Colors.white70,
-                      fontWeight: isSelected 
-                          ? FontWeight.bold 
+                      fontWeight: isSelected
+                          ? FontWeight.bold
                           : FontWeight.normal,
                     ),
                   ),
@@ -307,7 +309,7 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
                   min: 0.0,
                   max: 1.0,
                   divisions: 10,
-                  onChanged: settings.isEnabled 
+                  onChanged: (settings.isEnabled || settings.mode == MetronomeMode.beat)
                       ? (value) => provider.setVolume(value)
                       : null,
                 ),
@@ -319,7 +321,7 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
               isPreviewing ? 'Stop' : 'Preview',
               isPreviewing ? Icons.stop : Icons.play_arrow,
               () => provider.togglePreview(),
-              enabled: settings.isEnabled,
+              enabled: settings.isEnabled || settings.mode == MetronomeMode.beat,
               isActive: isPreviewing,
             ),
           ],

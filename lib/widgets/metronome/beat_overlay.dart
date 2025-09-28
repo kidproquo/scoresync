@@ -15,35 +15,39 @@ class BeatOverlay extends StatelessWidget {
 
         return Stack(
           children: [
+            // Background
+            Container(color: Colors.black),
             // Main content area with tap gesture
-            GestureDetector(
-              onTap: () {
-                if (metronomeProvider.isPlaying) {
-                  metronomeProvider.stopMetronome();
-                } else {
-                  metronomeProvider.startMetronome(isPlaybackMode: !isDesignMode);
-                }
-              },
-              child: Container(
-                color: Colors.black,
+            Positioned.fill(
+              bottom: 60, // Exclude controls area
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  if (metronomeProvider.isPlaying) {
+                    metronomeProvider.stopMetronome();
+                  } else {
+                    metronomeProvider.startMetronome(isPlaybackMode: !isDesignMode);
+                  }
+                },
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildMeasureDisplay(metronomeProvider),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 1),
                     _buildBeatVisualization(metronomeProvider),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 1),
                     _buildBPMDisplay(metronomeProvider),
-                    const SizedBox(height: 46),
                   ],
                 ),
               ),
             ),
             // Count-in overlay
             if (metronomeProvider.isCountingIn)
-              CountInOverlay(
-                currentBeat: metronomeProvider.currentBeat,
-                totalBeats: metronomeProvider.settings.timeSignature.numerator,
+              IgnorePointer(
+                child: CountInOverlay(
+                  currentBeat: metronomeProvider.currentBeat,
+                  totalBeats: metronomeProvider.settings.timeSignature.numerator,
+                ),
               ),
             // Controls overlay at bottom
             Positioned(
@@ -174,78 +178,81 @@ class BeatOverlay extends StatelessWidget {
         children: [
           // Rewind 4 measures
           IconButton(
-            icon: const Icon(Icons.fast_rewind, color: Colors.white, size: 18),
+            icon: const Icon(Icons.fast_rewind, color: Colors.white, size: 20),
             onPressed: provider.totalBeats > 0
                 ? () => _skipMeasures(provider, -4)
                 : null,
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
+              minWidth: 44,
+              minHeight: 44,
             ),
           ),
           // Rewind 1 measure
           IconButton(
-            icon: const Icon(Icons.skip_previous, color: Colors.white, size: 18),
+            icon: const Icon(Icons.skip_previous, color: Colors.white, size: 20),
             onPressed: provider.totalBeats > 0
                 ? () => _skipMeasures(provider, -1)
                 : null,
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
+              minWidth: 44,
+              minHeight: 44,
             ),
           ),
           // Stop button (resets counter)
           IconButton(
-            icon: const Icon(Icons.stop, color: Colors.white, size: 18),
+            icon: const Icon(Icons.stop, color: Colors.white, size: 20),
             onPressed: (provider.isPlaying || provider.totalBeats > 0)
                 ? () => provider.resetMetronome()
                 : null,
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
+              minWidth: 44,
+              minHeight: 44,
             ),
           ),
           // Play/Pause button
-          IconButton(
-            icon: Icon(
-              provider.isPlaying ? Icons.pause : Icons.play_arrow,
-              color: Colors.white,
-              size: 24,
-            ),
-            onPressed: () {
-              if (provider.isPlaying) {
-                provider.stopMetronome();
-              } else {
-                provider.startMetronome(isPlaybackMode: !isDesignMode);
-              }
-            },
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(
-              minWidth: 32,
-              minHeight: 32,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (provider.isPlaying) {
+                  provider.stopMetronome();
+                } else {
+                  provider.startMetronome(isPlaybackMode: !isDesignMode);
+                }
+              },
+              child: Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                child: Icon(
+                  provider.isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
             ),
           ),
           // Forward 1 measure
           IconButton(
-            icon: const Icon(Icons.skip_next, color: Colors.white, size: 18),
+            icon: const Icon(Icons.skip_next, color: Colors.white, size: 20),
             onPressed: () => _skipMeasures(provider, 1),
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
+              minWidth: 44,
+              minHeight: 44,
             ),
           ),
           // Forward 4 measures
           IconButton(
-            icon: const Icon(Icons.fast_forward, color: Colors.white, size: 18),
+            icon: const Icon(Icons.fast_forward, color: Colors.white, size: 20),
             onPressed: () => _skipMeasures(provider, 4),
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
-              minWidth: 28,
-              minHeight: 28,
+              minWidth: 44,
+              minHeight: 44,
             ),
           ),
         ],

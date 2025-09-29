@@ -121,6 +121,369 @@ class SyncPointsBar extends StatelessWidget {
     );
   }
 
+  void _showBeatSyncMenu(BuildContext context, DrawnRectangle rectangle, int beatNumber, String displayText, Offset tapPosition) {
+    // Calculate position to show menu above the badge
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final menuPosition = RelativeRect.fromRect(
+      Rect.fromPoints(
+        tapPosition.translate(-50, -120), // Offset left and up from tap position
+        tapPosition.translate(50, -40),    // Menu width and position above badge
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu(
+      context: context,
+      position: menuPosition,
+      items: [
+        PopupMenuItem(
+          value: 'edit',
+          child: Row(
+            children: [
+              const Icon(Icons.edit, size: 20),
+              const SizedBox(width: 8),
+              Text('Edit $displayText'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              const Icon(Icons.delete, size: 20, color: Colors.red),
+              const SizedBox(width: 8),
+              const Text('Delete', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (!context.mounted) return;
+      if (value == 'edit') {
+        _editBeatSyncPoint(context, rectangle, beatNumber);
+      } else if (value == 'delete') {
+        _deleteBeatSyncPoint(context, rectangle, beatNumber);
+      }
+    });
+  }
+
+  void _showTimestampSyncMenu(BuildContext context, DrawnRectangle rectangle, Duration timestamp, Offset tapPosition) {
+    // Calculate position to show menu above the badge
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final menuPosition = RelativeRect.fromRect(
+      Rect.fromPoints(
+        tapPosition.translate(-50, -120), // Offset left and up from tap position
+        tapPosition.translate(50, -40),    // Menu width and position above badge
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu(
+      context: context,
+      position: menuPosition,
+      items: [
+        PopupMenuItem(
+          value: 'edit',
+          child: Row(
+            children: [
+              const Icon(Icons.edit, size: 20),
+              const SizedBox(width: 8),
+              Text('Edit ${_formatDuration(timestamp)}'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              const Icon(Icons.delete, size: 20, color: Colors.red),
+              const SizedBox(width: 8),
+              const Text('Delete', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (!context.mounted) return;
+      if (value == 'edit') {
+        _editTimestampSyncPoint(context, rectangle, timestamp);
+      } else if (value == 'delete') {
+        _deleteSyncPoint(context, rectangle, timestamp);
+      }
+    });
+  }
+
+  void _editBeatSyncPoint(BuildContext context, DrawnRectangle rectangle, int oldBeatNumber) {
+    final metronomeProvider = context.read<MetronomeProvider>();
+    final beatsPerMeasure = metronomeProvider.settings.timeSignature.numerator;
+
+    // Calculate current measure and beat
+    int currentMeasure;
+    int currentBeat;
+    if (oldBeatNumber == 0) {
+      currentMeasure = 0;
+      currentBeat = 0;
+    } else {
+      currentMeasure = ((oldBeatNumber - 1) ~/ beatsPerMeasure) + 1;
+      currentBeat = ((oldBeatNumber - 1) % beatsPerMeasure) + 1;
+    }
+
+    final measureController = TextEditingController(text: currentMeasure.toString());
+    final beatController = TextEditingController(text: currentBeat.toString());
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Edit Beat Sync Point'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: measureController,
+                      decoration: const InputDecoration(
+                        labelText: 'Measure',
+                        hintText: 'e.g., 3',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: beatController,
+                      decoration: InputDecoration(
+                        labelText: 'Beat',
+                        hintText: '1-$beatsPerMeasure',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Time signature: ${metronomeProvider.settings.timeSignature.displayString}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newMeasure = int.tryParse(measureController.text);
+                final newBeat = int.tryParse(beatController.text);
+
+                if (newMeasure == null || newBeat == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter valid numbers'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                if (newMeasure < 0 || newBeat < 0 || newBeat > beatsPerMeasure) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Beat must be 0 or between 1 and $beatsPerMeasure'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                // Calculate new beat number
+                final newBeatNumber = (newMeasure == 0 && newBeat == 0)
+                    ? 0
+                    : ((newMeasure - 1) * beatsPerMeasure) + newBeat;
+
+                // Check for conflicts
+                if (rectangle.beatNumbers.contains(newBeatNumber) && newBeatNumber != oldBeatNumber) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Beat sync point already exists at M$newMeasure:B$newBeat'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                // Update the sync point
+                final rectangleProvider = context.read<RectangleProvider>();
+                rectangle.removeBeatNumber(oldBeatNumber);
+                rectangle.addBeatNumber(newBeatNumber);
+                rectangleProvider.updateRectangleTimestamps();
+
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Beat sync point updated to M$newMeasure:B$newBeat'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _editTimestampSyncPoint(BuildContext context, DrawnRectangle rectangle, Duration oldTimestamp) {
+    final totalMillis = oldTimestamp.inMilliseconds;
+    final minutes = totalMillis ~/ 60000;
+    final seconds = (totalMillis % 60000) ~/ 1000;
+    final milliseconds = totalMillis % 1000;
+
+    final minutesController = TextEditingController(text: minutes.toString());
+    final secondsController = TextEditingController(text: seconds.toString());
+    final millisController = TextEditingController(text: milliseconds.toString());
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Edit Timestamp Sync Point'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: minutesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Min',
+                        hintText: '0-59',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: secondsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Sec',
+                        hintText: '0-59',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: millisController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ms',
+                        hintText: '0-999',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Current: ${_formatDuration(oldTimestamp)}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              const Text(
+                '10ms accuracy',
+                style: TextStyle(fontSize: 11, color: Colors.blue),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newMinutes = int.tryParse(minutesController.text);
+                final newSeconds = int.tryParse(secondsController.text);
+                final newMillis = int.tryParse(millisController.text);
+
+                if (newMinutes == null || newSeconds == null || newMillis == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter valid numbers'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                if (newMinutes < 0 || newSeconds < 0 || newSeconds >= 60 || newMillis < 0 || newMillis >= 1000) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid time values'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                // Round to 10ms accuracy
+                final roundedMillis = (newMillis ~/ 10) * 10;
+                final newTimestamp = Duration(
+                  minutes: newMinutes,
+                  seconds: newSeconds,
+                  milliseconds: roundedMillis,
+                );
+
+                // Check for conflicts
+                const tolerance = Duration(milliseconds: 10);
+                for (final existing in rectangle.timestamps) {
+                  if (existing != oldTimestamp) {
+                    final difference = (newTimestamp - existing).abs();
+                    if (difference < tolerance) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Sync point already exists at ${_formatDuration(existing)}'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+                  }
+                }
+
+                // Update the sync point
+                final rectangleProvider = context.read<RectangleProvider>();
+                rectangle.removeTimestamp(oldTimestamp);
+                rectangle.addTimestamp(newTimestamp);
+                rectangleProvider.updateRectangleTimestamps();
+
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Sync point updated to ${_formatDuration(newTimestamp)}'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<RectangleProvider, MetronomeProvider>(
@@ -199,37 +562,32 @@ class SyncPointsBar extends StatelessWidget {
                                 displayText = 'M$measureNumber:B$beatInMeasure';
                               }
 
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.purple.withValues(alpha: 0.6),
-                                    width: 1,
-                                  ),
+                              return GestureDetector(
+                                onLongPressStart: (details) => _showBeatSyncMenu(
+                                  context,
+                                  selectedRectangle,
+                                  beatNumber,
+                                  displayText,
+                                  details.globalPosition,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      displayText,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.purple.withValues(alpha: 0.6),
+                                      width: 1,
                                     ),
-                                    const SizedBox(width: 6),
-                                    GestureDetector(
-                                      onTap: () => _deleteBeatSyncPoint(context, selectedRectangle, beatNumber),
-                                      child: Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: Colors.white.withValues(alpha: 0.8),
-                                      ),
+                                  ),
+                                  child: Text(
+                                    displayText,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               );
                             },
@@ -240,37 +598,31 @@ class SyncPointsBar extends StatelessWidget {
                             separatorBuilder: (context, index) => const SizedBox(width: 8),
                             itemBuilder: (context, index) {
                               final timestamp = selectedRectangle.timestamps[index];
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.green.withValues(alpha: 0.6),
-                                    width: 1,
-                                  ),
+                              return GestureDetector(
+                                onLongPressStart: (details) => _showTimestampSyncMenu(
+                                  context,
+                                  selectedRectangle,
+                                  timestamp,
+                                  details.globalPosition,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _formatDuration(timestamp),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.green.withValues(alpha: 0.6),
+                                      width: 1,
                                     ),
-                                    const SizedBox(width: 6),
-                                    GestureDetector(
-                                      onTap: () => _deleteSyncPoint(context, selectedRectangle, timestamp),
-                                      child: Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: Colors.white.withValues(alpha: 0.8),
-                                      ),
+                                  ),
+                                  child: Text(
+                                    _formatDuration(timestamp),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               );
                             },

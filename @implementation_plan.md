@@ -678,3 +678,12 @@ lib/
   - Video controls overlay now hidden when video fails to load
   - Allows users to tap the retry button without controls blocking interaction
   - Controls still visible for Beat Mode and when video loads successfully
+- **Implemented sync point editing with long-press menu**:
+  - Replaced X delete buttons with cleaner badge-only design
+  - Long-press on sync point badges shows context menu above the badge
+  - Menu offers Edit and Delete options with appropriate icons
+  - Beat Mode edit dialog allows changing measure and beat (e.g., M2:B1 → M3:B2)
+  - Video Mode edit dialog allows editing timestamp with 10ms accuracy
+  - Both modes include conflict checking to prevent duplicate sync points
+  - Edit dialogs show current values and validate input ranges
+  - Menu positioning calculated to appear directly above tapped badge

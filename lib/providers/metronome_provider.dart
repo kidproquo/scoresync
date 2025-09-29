@@ -22,6 +22,13 @@ class MetronomeProvider extends ChangeNotifier {
   // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
 
+  // Loop state for Beat Mode
+  int? _loopStartBeat;
+  int? _loopEndBeat;
+  bool _isLoopActive = false;
+  String? _loopStartRectangleId;
+  String? _loopEndRectangleId;
+
   MetronomeSettings get settings => _settings;
   bool get isPlaying => _isPlaying;
   bool get isCountingIn => _isCountingIn;
@@ -33,6 +40,14 @@ class MetronomeProvider extends ChangeNotifier {
   int get currentMeasure => _totalBeats > 0
       ? ((_totalBeats - 1) ~/ _settings.timeSignature.numerator) + 1
       : 1;
+
+  // Loop state getters
+  int? get loopStartBeat => _loopStartBeat;
+  int? get loopEndBeat => _loopEndBeat;
+  bool get isLoopActive => _isLoopActive;
+  String? get loopStartRectangleId => _loopStartRectangleId;
+  String? get loopEndRectangleId => _loopEndRectangleId;
+  bool get canLoop => _loopStartBeat != null && _loopEndBeat != null && _loopEndBeat! > _loopStartBeat!;
 
   MetronomeProvider() {
     _metronome = Metronome();
@@ -59,6 +74,7 @@ class MetronomeProvider extends ChangeNotifier {
 
   void updateSettings(MetronomeSettings newSettings) {
     final wasPlaying = isPlaying;
+    final oldMode = _settings.mode;
     developer.log('updateSettings called: wasPlaying=$wasPlaying, newEnabled=${newSettings.isEnabled}');
 
     // Pause preview if running
@@ -66,6 +82,16 @@ class MetronomeProvider extends ChangeNotifier {
 
     if (wasPlaying) {
       stopMetronome();
+    }
+
+    // Clear loop when switching modes
+    if (oldMode != newSettings.mode) {
+      developer.log('Mode changed from $oldMode to ${newSettings.mode}, clearing loop');
+      _loopStartBeat = null;
+      _loopEndBeat = null;
+      _isLoopActive = false;
+      _loopStartRectangleId = null;
+      _loopEndRectangleId = null;
     }
 
     _settings = newSettings;
@@ -185,6 +211,20 @@ class MetronomeProvider extends ChangeNotifier {
           _totalBeats++;
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
+
+          // Check for loop end in Beat Mode
+          if (_isLoopActive && _loopEndBeat != null && _totalBeats >= _loopEndBeat!) {
+            developer.log('Loop end reached at beat $_totalBeats, jumping to start beat $_loopStartBeat');
+
+            // Include count-in if enabled
+            if (_settings.countInEnabled && _loopStartBeat != null) {
+              stopMetronome();
+              seekToBeat(_loopStartBeat!);
+              Future.delayed(Duration.zero, () => _startWithCountIn());
+            } else if (_loopStartBeat != null) {
+              seekToBeat(_loopStartBeat!);
+            }
+          }
         }
         notifyListeners();
       },
@@ -260,6 +300,13 @@ class MetronomeProvider extends ChangeNotifier {
     _isPlaying = false;
     _isPreviewing = false;
     _isCountingIn = false;
+
+    // When loop is active, stop seeks to loop start
+    if (_isLoopActive && _loopStartBeat != null) {
+      developer.log('Loop active - seeking to loop start beat $_loopStartBeat on stop');
+      seekToBeat(_loopStartBeat!);
+    }
+
     notifyListeners();
 
     developer.log('Metronome paused (beat counter preserved: $_totalBeats)');
@@ -456,6 +503,65 @@ class MetronomeProvider extends ChangeNotifier {
       _metronome.setTimeSignature(_settings.timeSignature.numerator);
       _metronome.setVolume((_settings.volume * 100).round());
       _metronome.play();
+    }
+  }
+
+  // Loop management methods
+  void setLoopStart(int beatNumber, String rectangleId) {
+    final beatsPerMeasure = _settings.timeSignature.numerator;
+    final measureStart = ((beatNumber - 1) ~/ beatsPerMeasure);
+    _loopStartBeat = measureStart * beatsPerMeasure + 1;
+    _loopStartRectangleId = rectangleId;
+
+    if (_loopEndBeat != null && _loopEndBeat! <= _loopStartBeat!) {
+      clearLoopEnd();
+    }
+
+    _updateLoopStatus();
+    notifyListeners();
+  }
+
+  void setLoopEnd(int beatNumber, String rectangleId) {
+    final beatsPerMeasure = _settings.timeSignature.numerator;
+    final measureEnd = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
+    _loopEndBeat = measureEnd * beatsPerMeasure;
+    _loopEndRectangleId = rectangleId;
+
+    if (_loopStartBeat != null && _loopEndBeat! <= _loopStartBeat!) {
+      clearLoopStart();
+    }
+
+    _updateLoopStatus();
+    notifyListeners();
+  }
+
+  void clearLoopStart() {
+    _loopStartBeat = null;
+    _loopStartRectangleId = null;
+    _updateLoopStatus();
+    notifyListeners();
+  }
+
+  void clearLoopEnd() {
+    _loopEndBeat = null;
+    _loopEndRectangleId = null;
+    _updateLoopStatus();
+    notifyListeners();
+  }
+
+  void toggleLoop() {
+    if (canLoop) {
+      _isLoopActive = !_isLoopActive;
+      notifyListeners();
+    }
+  }
+
+  void _updateLoopStatus() {
+    final wasActive = _isLoopActive;
+    _isLoopActive = canLoop && _isLoopActive;
+
+    if (wasActive && !_isLoopActive) {
+      developer.log('Loop deactivated due to invalid start/end points');
     }
   }
 

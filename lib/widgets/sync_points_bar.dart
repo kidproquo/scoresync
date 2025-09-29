@@ -93,6 +93,15 @@ class SyncPointsBar extends StatelessWidget {
 
   void _deleteSyncPoint(BuildContext context, DrawnRectangle rectangle, Duration timestamp) {
     final rectangleProvider = context.read<RectangleProvider>();
+    final videoProvider = context.read<VideoProvider>();
+
+    // Clear loop markers if this rectangle is a loop marker
+    if (videoProvider.loopStartRectangleId == rectangle.id) {
+      videoProvider.clearLoopStart();
+    }
+    if (videoProvider.loopEndRectangleId == rectangle.id) {
+      videoProvider.clearLoopEnd();
+    }
 
     rectangle.removeTimestamp(timestamp);
     rectangleProvider.updateRectangleTimestamps();
@@ -108,6 +117,15 @@ class SyncPointsBar extends StatelessWidget {
 
   void _deleteBeatSyncPoint(BuildContext context, DrawnRectangle rectangle, int beatNumber) {
     final rectangleProvider = context.read<RectangleProvider>();
+    final metronomeProvider = context.read<MetronomeProvider>();
+
+    // Clear loop markers if this rectangle is a loop marker
+    if (metronomeProvider.loopStartRectangleId == rectangle.id) {
+      metronomeProvider.clearLoopStart();
+    }
+    if (metronomeProvider.loopEndRectangleId == rectangle.id) {
+      metronomeProvider.clearLoopEnd();
+    }
 
     rectangle.removeBeatNumber(beatNumber);
     rectangleProvider.updateRectangleTimestamps();
@@ -122,11 +140,17 @@ class SyncPointsBar extends StatelessWidget {
   }
 
   void _showBeatSyncMenu(BuildContext context, DrawnRectangle rectangle, int beatNumber, String displayText, Offset tapPosition) {
+    final metronomeProvider = context.read<MetronomeProvider>();
+
+    // Check if this rectangle is a loop marker
+    final isLoopStart = metronomeProvider.loopStartRectangleId == rectangle.id;
+    final isLoopEnd = metronomeProvider.loopEndRectangleId == rectangle.id;
+
     // Calculate position to show menu above the badge
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final menuPosition = RelativeRect.fromRect(
       Rect.fromPoints(
-        tapPosition.translate(-50, -120), // Offset left and up from tap position
+        tapPosition.translate(-50, -140), // Offset left and up from tap position
         tapPosition.translate(50, -40),    // Menu width and position above badge
       ),
       Offset.zero & overlay.size,
@@ -147,6 +171,26 @@ class SyncPointsBar extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
+          value: isLoopStart ? 'clear_loop_start' : 'loop_start',
+          child: Row(
+            children: [
+              Icon(Icons.flag_outlined, size: 20, color: Colors.green),
+              const SizedBox(width: 8),
+              Text(isLoopStart ? 'Clear Loop Start' : 'Set as Loop Start'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: isLoopEnd ? 'clear_loop_end' : 'loop_end',
+          child: Row(
+            children: [
+              Icon(Icons.flag, size: 20, color: Colors.red),
+              const SizedBox(width: 8),
+              Text(isLoopEnd ? 'Clear Loop End' : 'Set as Loop End'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: 'delete',
           child: Row(
             children: [
@@ -159,20 +203,43 @@ class SyncPointsBar extends StatelessWidget {
       ],
     ).then((value) {
       if (!context.mounted) return;
-      if (value == 'edit') {
-        _editBeatSyncPoint(context, rectangle, beatNumber);
-      } else if (value == 'delete') {
-        _deleteBeatSyncPoint(context, rectangle, beatNumber);
+      final provider = context.read<MetronomeProvider>();
+
+      switch (value) {
+        case 'edit':
+          _editBeatSyncPoint(context, rectangle, beatNumber);
+          break;
+        case 'loop_start':
+          provider.setLoopStart(beatNumber, rectangle.id);
+          break;
+        case 'clear_loop_start':
+          provider.clearLoopStart();
+          break;
+        case 'loop_end':
+          provider.setLoopEnd(beatNumber, rectangle.id);
+          break;
+        case 'clear_loop_end':
+          provider.clearLoopEnd();
+          break;
+        case 'delete':
+          _deleteBeatSyncPoint(context, rectangle, beatNumber);
+          break;
       }
     });
   }
 
   void _showTimestampSyncMenu(BuildContext context, DrawnRectangle rectangle, Duration timestamp, Offset tapPosition) {
+    final videoProvider = context.read<VideoProvider>();
+
+    // Check if this rectangle is a loop marker
+    final isLoopStart = videoProvider.loopStartRectangleId == rectangle.id;
+    final isLoopEnd = videoProvider.loopEndRectangleId == rectangle.id;
+
     // Calculate position to show menu above the badge
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final menuPosition = RelativeRect.fromRect(
       Rect.fromPoints(
-        tapPosition.translate(-50, -120), // Offset left and up from tap position
+        tapPosition.translate(-50, -140), // Offset left and up from tap position
         tapPosition.translate(50, -40),    // Menu width and position above badge
       ),
       Offset.zero & overlay.size,
@@ -193,6 +260,26 @@ class SyncPointsBar extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
+          value: isLoopStart ? 'clear_loop_start' : 'loop_start',
+          child: Row(
+            children: [
+              Icon(Icons.flag_outlined, size: 20, color: Colors.green),
+              const SizedBox(width: 8),
+              Text(isLoopStart ? 'Clear Loop Start' : 'Set as Loop Start'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: isLoopEnd ? 'clear_loop_end' : 'loop_end',
+          child: Row(
+            children: [
+              Icon(Icons.flag, size: 20, color: Colors.red),
+              const SizedBox(width: 8),
+              Text(isLoopEnd ? 'Clear Loop End' : 'Set as Loop End'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: 'delete',
           child: Row(
             children: [
@@ -205,10 +292,27 @@ class SyncPointsBar extends StatelessWidget {
       ],
     ).then((value) {
       if (!context.mounted) return;
-      if (value == 'edit') {
-        _editTimestampSyncPoint(context, rectangle, timestamp);
-      } else if (value == 'delete') {
-        _deleteSyncPoint(context, rectangle, timestamp);
+      final provider = context.read<VideoProvider>();
+
+      switch (value) {
+        case 'edit':
+          _editTimestampSyncPoint(context, rectangle, timestamp);
+          break;
+        case 'loop_start':
+          provider.setLoopStart(timestamp, rectangle.id);
+          break;
+        case 'clear_loop_start':
+          provider.clearLoopStart();
+          break;
+        case 'loop_end':
+          provider.setLoopEnd(timestamp, rectangle.id);
+          break;
+        case 'clear_loop_end':
+          provider.clearLoopEnd();
+          break;
+        case 'delete':
+          _deleteSyncPoint(context, rectangle, timestamp);
+          break;
       }
     });
   }

@@ -32,6 +32,8 @@ class BeatOverlay extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    if (metronomeProvider.isLoopActive)
+                      _buildLoopStatus(metronomeProvider),
                     _buildMeasureDisplay(metronomeProvider),
                     const SizedBox(height: 1),
                     _buildBeatVisualization(metronomeProvider),
@@ -253,6 +255,56 @@ class BeatOverlay extends StatelessWidget {
             constraints: const BoxConstraints(
               minWidth: 44,
               minHeight: 44,
+            ),
+          ),
+          // Loop toggle button
+          IconButton(
+            icon: Icon(
+              provider.isLoopActive ? Icons.repeat_on : Icons.repeat,
+              color: provider.isLoopActive ? Colors.blue : Colors.white,
+              size: 20,
+            ),
+            onPressed: provider.canLoop ? () => provider.toggleLoop() : null,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 44,
+              minHeight: 44,
+            ),
+            tooltip: 'Toggle Loop',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoopStatus(MetronomeProvider provider) {
+    if (!provider.isLoopActive || provider.loopStartBeat == null || provider.loopEndBeat == null) {
+      return const SizedBox.shrink();
+    }
+
+    final beatsPerMeasure = provider.settings.timeSignature.numerator;
+    final startMeasure = ((provider.loopStartBeat! - 1) ~/ beatsPerMeasure) + 1;
+    final endMeasure = ((provider.loopEndBeat! - 1) ~/ beatsPerMeasure) + 1;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.repeat, color: Colors.blue, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            'Loop: M$startMeasure-M$endMeasure',
+            style: const TextStyle(
+              color: Colors.blue,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

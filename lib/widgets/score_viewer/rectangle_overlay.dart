@@ -285,8 +285,8 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
 
   @override
   Widget build(BuildContext context) {
-    return Consumer5<RectangleProvider, AppModeProvider, UiStateProvider, MetronomeProvider, BeatSyncProvider>(
-      builder: (context, rectangleProvider, appModeProvider, uiStateProvider, metronomeProvider, beatSyncProvider, _) {
+    return Consumer6<RectangleProvider, AppModeProvider, UiStateProvider, MetronomeProvider, BeatSyncProvider, VideoProvider>(
+      builder: (context, rectangleProvider, appModeProvider, uiStateProvider, metronomeProvider, beatSyncProvider, videoProvider, _) {
         final isDesignMode = appModeProvider.isDesignMode;
         final isVideoDragging = uiStateProvider.isVideoDragging;
         final rectangles = rectangleProvider.getRectanglesForPage(widget.currentPageNumber);
@@ -324,6 +324,12 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
                         activeRectangleId: rectangleProvider.activeRectangleId,
                         isBeatMode: isBeatMode,
                         beatsPerMeasure: metronomeProvider.settings.timeSignature.numerator,
+                        loopStartRectangleId: isBeatMode
+                            ? metronomeProvider.loopStartRectangleId
+                            : videoProvider.loopStartRectangleId,
+                        loopEndRectangleId: isBeatMode
+                            ? metronomeProvider.loopEndRectangleId
+                            : videoProvider.loopEndRectangleId,
                       ),
                     ),
                   ),

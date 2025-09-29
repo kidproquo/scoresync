@@ -687,3 +687,18 @@ lib/
   - Both modes include conflict checking to prevent duplicate sync points
   - Edit dialogs show current values and validate input ranges
   - Menu positioning calculated to appear directly above tapped badge
+- **Implemented complete loop feature for both Beat and Video modes**:
+  - Added loop state management to both MetronomeProvider and VideoProvider
+  - Loop markers: start (green highlighting) and end (red highlighting) for sync point rectangles
+  - Added "Set as Loop Start" and "Set as Loop End" menu items to sync point context menus
+  - Beat Mode: Loops automatically expand to full measure boundaries (M1-M3)
+  - Video Mode: Loops use exact timestamps with 1-second minimum duration
+  - Loop validation: End must come after start, auto-clears invalid configurations
+  - Loop monitoring: Automatic seek-to-start when playback reaches loop end
+  - Count-in support: Loops respect count-in settings in Beat Mode
+  - Stop behavior: Stop button seeks to loop start when loop is active
+  - Loop status display: Visual indicators in both Beat and Video overlays showing loop range
+  - Loop toggle buttons: Added to transport controls in both modes with active/inactive visual feedback
+  - Edge case handling: Auto-clears loops when deleting sync points or switching modes
+  - Visual indicators: Loop start rectangles highlighted in green, loop end in red
+  - Mode isolation: Each mode maintains separate loop state, cleared when switching modes

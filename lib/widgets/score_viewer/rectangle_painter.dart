@@ -10,6 +10,8 @@ class RectanglePainter extends CustomPainter {
   final String? activeRectangleId;
   final bool isBeatMode;
   final int beatsPerMeasure;
+  final String? loopStartRectangleId;
+  final String? loopEndRectangleId;
 
   RectanglePainter({
     required this.rectangles,
@@ -20,6 +22,8 @@ class RectanglePainter extends CustomPainter {
     this.activeRectangleId,
     required this.isBeatMode,
     required this.beatsPerMeasure,
+    this.loopStartRectangleId,
+    this.loopEndRectangleId,
   });
 
   @override
@@ -50,19 +54,39 @@ class RectanglePainter extends CustomPainter {
 
   void _drawRectangle(Canvas canvas, DrawnRectangle rectangle) {
     final isActive = activeRectangleId == rectangle.id;
+    final isLoopStart = loopStartRectangleId == rectangle.id;
+    final isLoopEnd = loopEndRectangleId == rectangle.id;
 
     // In playback mode, active rectangles have no border, just fill
     if (isActive && !isDesignMode) {
+      Color fillColor = Colors.yellow.withAlpha(80);
+
+      // Override color for loop markers
+      if (isLoopStart) {
+        fillColor = Colors.green.withAlpha(100);
+      } else if (isLoopEnd) {
+        fillColor = Colors.red.withAlpha(100);
+      }
+
       final fillPaint = Paint()
-        ..color = Colors.yellow.withAlpha(80)
+        ..color = fillColor
         ..style = PaintingStyle.fill;
       canvas.drawRect(rectangle.rect, fillPaint);
     } else {
       // Draw border for non-active rectangles or design mode
+      Color borderColor = rectangle.isSelected
+          ? rectangle.color.withAlpha(255)
+          : rectangle.color.withAlpha(180);
+
+      // Override color for loop markers
+      if (isLoopStart) {
+        borderColor = Colors.green;
+      } else if (isLoopEnd) {
+        borderColor = Colors.red;
+      }
+
       final paint = Paint()
-        ..color = rectangle.isSelected
-            ? rectangle.color.withAlpha(255)
-            : rectangle.color.withAlpha(180)
+        ..color = borderColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = isDesignMode
             ? rectangle.strokeWidth
@@ -70,10 +94,18 @@ class RectanglePainter extends CustomPainter {
 
       canvas.drawRect(rectangle.rect, paint);
 
-      // Draw fill for selected rectangles in design mode
-      if (rectangle.isSelected) {
+      // Draw fill for selected rectangles in design mode or loop markers
+      if (rectangle.isSelected || isLoopStart || isLoopEnd) {
+        Color fillColor = rectangle.color.withAlpha(30);
+
+        if (isLoopStart) {
+          fillColor = Colors.green.withAlpha(50);
+        } else if (isLoopEnd) {
+          fillColor = Colors.red.withAlpha(50);
+        }
+
         final fillPaint = Paint()
-          ..color = rectangle.color.withAlpha(30)
+          ..color = fillColor
           ..style = PaintingStyle.fill;
         canvas.drawRect(rectangle.rect, fillPaint);
       }

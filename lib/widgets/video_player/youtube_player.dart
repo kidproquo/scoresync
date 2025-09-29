@@ -814,6 +814,9 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                     child: appModeProvider.isDesignMode ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Loop status indicator
+                        if (videoProvider.isLoopActive)
+                          _buildLoopStatus(videoProvider),
                         // Top row - main controls
                         LayoutBuilder(
                           builder: (context, constraints) {
@@ -1165,6 +1168,26 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         ),
         tooltip: '10 seconds forward',
       ),
+      // Loop toggle button
+      const SizedBox(width: 8),
+      Consumer<VideoProvider>(
+        builder: (context, videoProvider, _) {
+          return IconButton(
+            icon: Icon(
+              videoProvider.isLoopActive ? Icons.repeat_on : Icons.repeat,
+              color: videoProvider.isLoopActive ? Colors.blue : Colors.white,
+              size: 18,
+            ),
+            onPressed: videoProvider.canLoop ? () => videoProvider.toggleLoop() : null,
+            padding: const EdgeInsets.all(1),
+            constraints: const BoxConstraints(
+              minWidth: 30,
+              minHeight: 30,
+            ),
+            tooltip: 'Toggle Loop',
+          );
+        },
+      ),
       // Speed control in top row
       const SizedBox(width: 8),
       Container(
@@ -1195,5 +1218,43 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         ),
       ),
     ];
+  }
+
+  Widget _buildLoopStatus(VideoProvider provider) {
+    if (!provider.isLoopActive || provider.loopStartTime == null || provider.loopEndTime == null) {
+      return const SizedBox.shrink();
+    }
+
+    String formatTime(Duration duration) {
+      String twoDigits(int n) => n.toString().padLeft(2, '0');
+      String minutes = twoDigits(duration.inMinutes.remainder(60));
+      String seconds = twoDigits(duration.inSeconds.remainder(60));
+      return '$minutes:$seconds';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.5), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.repeat, color: Colors.blue, size: 14),
+          const SizedBox(width: 4),
+          Text(
+            'Loop: ${formatTime(provider.loopStartTime!)}-${formatTime(provider.loopEndTime!)}',
+            style: const TextStyle(
+              color: Colors.blue,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

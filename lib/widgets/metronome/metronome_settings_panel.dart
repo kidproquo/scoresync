@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/metronome_provider.dart';
+import '../../providers/video_provider.dart';
 import '../../models/metronome_settings.dart';
 
 class MetronomeSettingsPanel extends StatefulWidget {
@@ -439,8 +440,13 @@ class _MetronomeSettingsPanelState extends State<MetronomeSettingsPanel> {
           ],
           selected: {settings.mode},
           onSelectionChanged: (Set<MetronomeMode> selection) {
+            final newMode = selection.first;
+            // Clear video loop when switching to Beat mode
+            if (newMode == MetronomeMode.beat) {
+              context.read<VideoProvider>().clearAllLoopState();
+            }
             provider.updateSettings(
-              settings.copyWith(mode: selection.first),
+              settings.copyWith(mode: newMode),
             );
           },
           style: ButtonStyle(

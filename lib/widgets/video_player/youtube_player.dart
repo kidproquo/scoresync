@@ -790,13 +790,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                       },
                     ),
                   ),
-                // Loop status overlay
-                if (videoProvider.isLoopActive)
-                  Positioned(
-                    top: 20,
-                    left: 20,
-                    child: _buildLoopStatusOverlay(videoProvider),
-                  ),
                 // Minimal controls overlay (always visible in overlay mode)
               if (widget.showGuiControls && _isPlayerReady)
                 Positioned(
@@ -1172,24 +1165,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         ),
         tooltip: '10 seconds forward',
       ),
-      // Loop toggle button
+      // Enhanced loop button with details
       const SizedBox(width: 8),
       Consumer<VideoProvider>(
         builder: (context, videoProvider, _) {
-          return IconButton(
-            icon: Icon(
-              videoProvider.isLoopActive ? Icons.repeat_on : Icons.repeat,
-              color: videoProvider.isLoopActive ? Colors.blue : Colors.white,
-              size: 18,
-            ),
-            onPressed: videoProvider.canLoop ? () => videoProvider.toggleLoop() : null,
-            padding: const EdgeInsets.all(1),
-            constraints: const BoxConstraints(
-              minWidth: 30,
-              minHeight: 30,
-            ),
-            tooltip: 'Toggle Loop',
-          );
+          return _buildVideoLoopButton(videoProvider);
         },
       ),
       // Speed control in top row
@@ -1224,39 +1204,76 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     ];
   }
 
-  Widget _buildLoopStatusOverlay(VideoProvider provider) {
-    if (!provider.isLoopActive || provider.loopStartTime == null || provider.loopEndTime == null) {
-      return const SizedBox.shrink();
+  Widget _buildVideoLoopButton(VideoProvider provider) {
+    // Determine button state and appearance
+    final hasLoop = provider.loopStartTime != null && provider.loopEndTime != null;
+    final isActive = provider.isLoopActive;
+    final canLoop = provider.canLoop;
+
+    // Calculate loop details if available
+    String loopText = '';
+    if (hasLoop) {
+      String formatTime(Duration duration) {
+        String twoDigits(int n) => n.toString().padLeft(2, '0');
+        String minutes = twoDigits(duration.inMinutes.remainder(60));
+        String seconds = twoDigits(duration.inSeconds.remainder(60));
+        return '$minutes:$seconds';
+      }
+      loopText = '${formatTime(provider.loopStartTime!)}-${formatTime(provider.loopEndTime!)}';
     }
 
-    String formatTime(Duration duration) {
-      String twoDigits(int n) => n.toString().padLeft(2, '0');
-      String minutes = twoDigits(duration.inMinutes.remainder(60));
-      String seconds = twoDigits(duration.inSeconds.remainder(60));
-      return '$minutes:$seconds';
+    // Determine colors based on state
+    Color iconColor;
+    Color textColor;
+    Color backgroundColor;
+
+    if (!hasLoop) {
+      // No loop set - disabled state
+      iconColor = Colors.grey[600]!;
+      textColor = Colors.grey[600]!;
+      backgroundColor = Colors.transparent;
+    } else if (isActive) {
+      // Loop active - enabled and on
+      iconColor = Colors.blue;
+      textColor = Colors.blue;
+      backgroundColor = Colors.blue.withValues(alpha: 0.1);
+    } else {
+      // Loop set but not active - enabled but off
+      iconColor = Colors.white;
+      textColor = Colors.white;
+      backgroundColor = Colors.transparent;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.repeat, color: Colors.blue, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            'Loop: ${formatTime(provider.loopStartTime!)}-${formatTime(provider.loopEndTime!)}',
-            style: const TextStyle(
-              color: Colors.blue,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+    return GestureDetector(
+      onTap: canLoop ? () => provider.toggleLoop() : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: isActive ? Border.all(color: Colors.blue.withValues(alpha: 0.4)) : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isActive ? Icons.repeat_on : Icons.repeat,
+              color: iconColor,
+              size: 16,
             ),
-          ),
-        ],
+            if (hasLoop) ...[
+              const SizedBox(width: 4),
+              Text(
+                loopText,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

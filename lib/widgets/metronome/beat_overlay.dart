@@ -49,13 +49,6 @@ class BeatOverlay extends StatelessWidget {
                   totalBeats: metronomeProvider.settings.timeSignature.numerator,
                 ),
               ),
-            // Loop status overlay at top
-            if (metronomeProvider.isLoopActive)
-              Positioned(
-                top: 20,
-                left: 20,
-                child: _buildLoopStatusOverlay(metronomeProvider),
-              ),
             // Controls overlay at bottom
             Positioned(
               left: 0,
@@ -164,18 +157,8 @@ class BeatOverlay extends StatelessWidget {
           ],
         ),
         const SizedBox(width: 8),
-        // Loop toggle button
-        IconButton(
-          icon: Icon(
-            provider.isLoopActive ? Icons.repeat_on : Icons.repeat,
-            color: provider.isLoopActive ? Colors.blue : Colors.grey[400],
-            size: 18,
-          ),
-          onPressed: provider.canLoop ? () => provider.toggleLoop() : null,
-          padding: const EdgeInsets.all(4),
-          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-          tooltip: 'Toggle Loop',
-        ),
+        // Enhanced loop button with details
+        _buildLoopButton(provider),
       ],
     );
   }
@@ -280,36 +263,73 @@ class BeatOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildLoopStatusOverlay(MetronomeProvider provider) {
-    if (!provider.isLoopActive || provider.loopStartBeat == null || provider.loopEndBeat == null) {
-      return const SizedBox.shrink();
+  Widget _buildLoopButton(MetronomeProvider provider) {
+    // Determine button state and appearance
+    final hasLoop = provider.loopStartBeat != null && provider.loopEndBeat != null;
+    final isActive = provider.isLoopActive;
+    final canLoop = provider.canLoop;
+
+    // Calculate loop details if available
+    String loopText = '';
+    if (hasLoop) {
+      final beatsPerMeasure = provider.settings.timeSignature.numerator;
+      final startMeasure = ((provider.loopStartBeat! - 1) ~/ beatsPerMeasure) + 1;
+      final endMeasure = ((provider.loopEndBeat! - 1) ~/ beatsPerMeasure) + 1;
+      loopText = 'M$startMeasure-M$endMeasure';
     }
 
-    final beatsPerMeasure = provider.settings.timeSignature.numerator;
-    final startMeasure = ((provider.loopStartBeat! - 1) ~/ beatsPerMeasure) + 1;
-    final endMeasure = ((provider.loopEndBeat! - 1) ~/ beatsPerMeasure) + 1;
+    // Determine colors based on state
+    Color iconColor;
+    Color textColor;
+    Color backgroundColor;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.repeat, color: Colors.blue, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            'Loop: M$startMeasure-M$endMeasure',
-            style: const TextStyle(
-              color: Colors.blue,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+    if (!hasLoop) {
+      // No loop set - disabled state
+      iconColor = Colors.grey[600]!;
+      textColor = Colors.grey[600]!;
+      backgroundColor = Colors.transparent;
+    } else if (isActive) {
+      // Loop active - enabled and on
+      iconColor = Colors.blue;
+      textColor = Colors.blue;
+      backgroundColor = Colors.blue.withValues(alpha: 0.1);
+    } else {
+      // Loop set but not active - enabled but off
+      iconColor = Colors.grey[400]!;
+      textColor = Colors.grey[400]!;
+      backgroundColor = Colors.transparent;
+    }
+
+    return GestureDetector(
+      onTap: canLoop ? () => provider.toggleLoop() : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: isActive ? Border.all(color: Colors.blue.withValues(alpha: 0.4)) : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isActive ? Icons.repeat_on : Icons.repeat,
+              color: iconColor,
+              size: 16,
             ),
-          ),
-        ],
+            if (hasLoop) ...[
+              const SizedBox(width: 4),
+              Text(
+                loopText,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

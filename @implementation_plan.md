@@ -724,3 +724,10 @@ lib/
   - Improved accent timing alignment by using synchronized metronome settings throughout
   - Eliminated audio stutter during count-in to main transition by removing problematic stop/restart sequence
   - Enhanced beat counting consistency between UI display and metronome library internal state
+- **Enhanced loop button UI with integrated details display**:
+  - Replaced separate loop status overlays with enhanced loop buttons showing loop details inline
+  - Beat Mode loop button displays measure range (e.g., "M1-M3") next to repeat icon
+  - Video Mode loop button displays time range (e.g., "01:30-02:45") next to repeat icon
+  - Implemented three visual states: disabled (no loop), enabled but inactive, and active with blue highlighting
+  - Loop buttons integrate seamlessly with BPM row controls without taking additional screen space
+  - Enhanced user experience with immediate visual feedback and consistent behavior across both modes

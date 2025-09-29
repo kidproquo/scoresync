@@ -54,6 +54,7 @@ class SongProvider extends ChangeNotifier {
     // Set up auto-save callbacks
     _rectangleProvider?.setOnRectanglesChanged(_onRectanglesChanged);
     _metronomeProvider?.setOnSettingsChangedCallback(_onMetronomeSettingsChanged);
+    _videoProvider?.setOnLoopSettingsChangedCallback(_onVideoLoopSettingsChanged);
     developer.log('Provider references set successfully');
   }
 
@@ -74,6 +75,19 @@ class SongProvider extends ChangeNotifier {
   // Handle metronome settings changes
   void _onMetronomeSettingsChanged() {
     updateSongMetronomeSettings();
+  }
+
+  // Handle video loop settings changes
+  void _onVideoLoopSettingsChanged() {
+    if (_currentSong != null && _videoProvider != null) {
+      updateSongVideoLoopSettings(
+        loopStart: _videoProvider!.loopStartTime,
+        loopEnd: _videoProvider!.loopEndTime,
+        loopActive: _videoProvider!.isLoopActive,
+        loopStartRectangleId: _videoProvider!.loopStartRectangleId,
+        loopEndRectangleId: _videoProvider!.loopEndRectangleId,
+      );
+    }
   }
 
   // Update rectangles without debouncing (for immediate saves)
@@ -340,6 +354,43 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
+  // Update current song's video loop settings
+  Future<void> updateSongVideoLoopSettings({
+    Duration? loopStart,
+    Duration? loopEnd,
+    bool? loopActive,
+    String? loopStartRectangleId,
+    String? loopEndRectangleId,
+    bool clearLoopStart = false,
+    bool clearLoopEnd = false,
+  }) async {
+    if (_currentSong == null) return;
+
+    try {
+      final updatedSong = _currentSong!.copyWith(
+        videoLoopStart: loopStart,
+        videoLoopEnd: loopEnd,
+        videoLoopActive: loopActive,
+        videoLoopStartRectangleId: loopStartRectangleId,
+        videoLoopEndRectangleId: loopEndRectangleId,
+        clearVideoLoopStart: clearLoopStart,
+        clearVideoLoopEnd: clearLoopEnd,
+      );
+      await _saveSongDirect(updatedSong);
+      _currentSong = updatedSong;
+
+      // Update local songs list
+      _songs.removeWhere((s) => s.name == updatedSong.name);
+      _songs.add(updatedSong);
+      _songs.sort((a, b) => a.name.compareTo(b.name));
+
+      developer.log('Saved video loop settings for song: ${_currentSong!.name}');
+      notifyListeners();
+    } catch (e) {
+      developer.log('Error updating video loop settings: $e');
+    }
+  }
+
   // Private helper to save song (reloads all songs)
   Future<void> _saveSong(Song song) async {
     await SongStorageService.instance.saveSong(song);
@@ -461,6 +512,16 @@ class SongProvider extends ChangeNotifier {
           _videoProvider!.clearVideo();
           developer.log('Video URL cleared for new song');
         }
+
+        // Initialize video loop state from song
+        _videoProvider!.initializeLoopStateFromSong(
+          loopStart: song.videoLoopStart,
+          loopEnd: song.videoLoopEnd,
+          loopActive: song.videoLoopActive,
+          loopStartRectangleId: song.videoLoopStartRectangleId,
+          loopEndRectangleId: song.videoLoopEndRectangleId,
+        );
+        developer.log('Video loop state initialized from song');
       } else {
         developer.log('VideoProvider is null');
       }
@@ -499,6 +560,7 @@ class SongProvider extends ChangeNotifier {
       
       if (_videoProvider != null) {
         _videoProvider!.clearVideo();
+        _videoProvider!.clearAllLoopState();
         developer.log('VideoProvider cleared');
       }
       

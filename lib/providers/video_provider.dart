@@ -18,6 +18,9 @@ class VideoProvider extends ChangeNotifier {
   String? _loopStartRectangleId;
   String? _loopEndRectangleId;
 
+  // Callback for when loop settings change (to save to song)
+  Function()? _onLoopSettingsChanged;
+
   String get currentUrl => _currentUrl;
   bool get isPlayerReady => _isPlayerReady;
   bool get isPlaying => _isPlaying;
@@ -173,6 +176,7 @@ class VideoProvider extends ChangeNotifier {
 
     _updateLoopStatus();
     notifyListeners();
+    _onLoopSettingsChanged?.call();
   }
 
   void setLoopEnd(Duration timestamp, String rectangleId) {
@@ -185,6 +189,7 @@ class VideoProvider extends ChangeNotifier {
 
     _updateLoopStatus();
     notifyListeners();
+    _onLoopSettingsChanged?.call();
   }
 
   void clearLoopStart() {
@@ -192,6 +197,7 @@ class VideoProvider extends ChangeNotifier {
     _loopStartRectangleId = null;
     _updateLoopStatus();
     notifyListeners();
+    _onLoopSettingsChanged?.call();
   }
 
   void clearLoopEnd() {
@@ -199,12 +205,14 @@ class VideoProvider extends ChangeNotifier {
     _loopEndRectangleId = null;
     _updateLoopStatus();
     notifyListeners();
+    _onLoopSettingsChanged?.call();
   }
 
   void toggleLoop() {
     if (canLoop) {
       _isLoopActive = !_isLoopActive;
       notifyListeners();
+      _onLoopSettingsChanged?.call();
     }
   }
 
@@ -225,6 +233,26 @@ class VideoProvider extends ChangeNotifier {
     _loopEndRectangleId = null;
     notifyListeners();
     developer.log('Video loop state cleared');
+  }
+
+  void setOnLoopSettingsChangedCallback(Function()? callback) {
+    _onLoopSettingsChanged = callback;
+  }
+
+  // Initialize loop state from song
+  void initializeLoopStateFromSong({
+    Duration? loopStart,
+    Duration? loopEnd,
+    bool? loopActive,
+    String? loopStartRectangleId,
+    String? loopEndRectangleId,
+  }) {
+    _loopStartTime = loopStart;
+    _loopEndTime = loopEnd;
+    _isLoopActive = loopActive ?? false;
+    _loopStartRectangleId = loopStartRectangleId;
+    _loopEndRectangleId = loopEndRectangleId;
+    notifyListeners();
   }
 
   void clearVideo() {

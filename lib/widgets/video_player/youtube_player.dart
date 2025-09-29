@@ -790,6 +790,13 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                       },
                     ),
                   ),
+                // Loop status overlay
+                if (videoProvider.isLoopActive)
+                  Positioned(
+                    top: 20,
+                    left: 20,
+                    child: _buildLoopStatusOverlay(videoProvider),
+                  ),
                 // Minimal controls overlay (always visible in overlay mode)
               if (widget.showGuiControls && _isPlayerReady)
                 Positioned(
@@ -814,9 +821,6 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                     child: appModeProvider.isDesignMode ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Loop status indicator
-                        if (videoProvider.isLoopActive)
-                          _buildLoopStatus(videoProvider),
                         // Top row - main controls
                         LayoutBuilder(
                           builder: (context, constraints) {
@@ -1220,7 +1224,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     ];
   }
 
-  Widget _buildLoopStatus(VideoProvider provider) {
+  Widget _buildLoopStatusOverlay(VideoProvider provider) {
     if (!provider.isLoopActive || provider.loopStartTime == null || provider.loopEndTime == null) {
       return const SizedBox.shrink();
     }
@@ -1233,18 +1237,17 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.2),
+        color: Colors.black.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.5), width: 1),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.6)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.repeat, color: Colors.blue, size: 14),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             'Loop: ${formatTime(provider.loopStartTime!)}-${formatTime(provider.loopEndTime!)}',
             style: const TextStyle(

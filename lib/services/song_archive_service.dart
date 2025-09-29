@@ -9,8 +9,6 @@ import 'dart:developer' as developer;
 
 import '../models/song.dart';
 import '../models/song_archive.dart';
-import '../models/rectangle.dart';
-import '../models/metronome_settings.dart';
 
 class SongArchiveService {
   /// Creates a timestamped ZIP archive containing the song data and PDF
@@ -169,15 +167,8 @@ class SongArchiveService {
       final pdfFile = File(pdfPath);
       await pdfFile.writeAsBytes(scoreFile.content as List<int>);
 
-      // Create Song object with imported data
-      final song = Song(
-        name: finalSongName,
-        createdAt: songArchive.createdAt,
-        pdfPath: pdfPath,
-        videoUrl: songArchive.youtubeUrl,
-        rectangles: _convertRectangleData(songArchive.rectangles),
-        metronomeSettings: _createMetronomeSettingsFromData(songArchive.metronomeSettings),
-      );
+      // Create Song object with imported data using toSong method (includes loop settings)
+      final song = songArchive.toSong(pdfPath: pdfPath).copyWith(name: finalSongName);
 
       developer.log('Successfully imported song: $finalSongName');
       return song;
@@ -188,35 +179,6 @@ class SongArchiveService {
     }
   }
 
-  /// Convert rectangle data from archive format to Song format
-  List<DrawnRectangle> _convertRectangleData(List<RectangleData> rectanglesList) {
-    final List<DrawnRectangle> rectangles = [];
-
-    for (final rectData in rectanglesList) {
-      final rectangle = DrawnRectangle(
-        id: rectData.id,
-        rect: rectData.rect.toRect(),
-        pageNumber: rectData.pageNumber,
-        createdAt: DateTime.now(),
-        timestamps: rectData.timestamps.map((ms) => Duration(milliseconds: ms)).toList(),
-      );
-
-      rectangles.add(rectangle);
-    }
-
-    return rectangles;
-  }
-
-  /// Create MetronomeSettings from archived data
-  MetronomeSettings _createMetronomeSettingsFromData(MetronomeSettingsData data) {
-    return MetronomeSettings(
-      bpm: data.bpm,
-      timeSignature: TimeSignature(data.timeSignature.beats, data.timeSignature.noteValue),
-      countInEnabled: data.countInEnabled,
-      volume: data.volume,
-      isEnabled: data.enabled,
-    );
-  }
 
   /// Get the songs directory for storing imported songs
   Future<Directory> _getSongsDirectory() async {

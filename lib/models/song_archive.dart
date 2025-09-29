@@ -12,6 +12,13 @@ class SongArchive {
   final MetronomeSettingsData metronomeSettings;
   final List<RectangleData> rectangles;
 
+  // Video loop settings
+  final int? videoLoopStart;
+  final int? videoLoopEnd;
+  final bool videoLoopActive;
+  final String? videoLoopStartRectangleId;
+  final String? videoLoopEndRectangleId;
+
   const SongArchive({
     required this.version,
     required this.name,
@@ -19,6 +26,11 @@ class SongArchive {
     this.youtubeUrl,
     required this.metronomeSettings,
     required this.rectangles,
+    this.videoLoopStart,
+    this.videoLoopEnd,
+    this.videoLoopActive = false,
+    this.videoLoopStartRectangleId,
+    this.videoLoopEndRectangleId,
   });
 
   factory SongArchive.fromSong(Song song) {
@@ -43,6 +55,11 @@ class SongArchive {
       youtubeUrl: song.videoUrl,
       metronomeSettings: MetronomeSettingsData.fromMetronomeSettings(song.metronomeSettings),
       rectangles: rectanglesList,
+      videoLoopStart: song.videoLoopStart?.inMilliseconds,
+      videoLoopEnd: song.videoLoopEnd?.inMilliseconds,
+      videoLoopActive: song.videoLoopActive,
+      videoLoopStartRectangleId: song.videoLoopStartRectangleId,
+      videoLoopEndRectangleId: song.videoLoopEndRectangleId,
     );
   }
 
@@ -54,6 +71,11 @@ class SongArchive {
       'youtubeUrl': youtubeUrl,
       'metronomeSettings': metronomeSettings.toJson(),
       'rectangles': rectangles.map((r) => r.toJson()).toList(),
+      'videoLoopStart': videoLoopStart,
+      'videoLoopEnd': videoLoopEnd,
+      'videoLoopActive': videoLoopActive,
+      'videoLoopStartRectangleId': videoLoopStartRectangleId,
+      'videoLoopEndRectangleId': videoLoopEndRectangleId,
     };
   }
 
@@ -67,6 +89,11 @@ class SongArchive {
       rectangles: (json['rectangles'] as List)
           .map((r) => RectangleData.fromJson(r))
           .toList(),
+      videoLoopStart: json['videoLoopStart'],
+      videoLoopEnd: json['videoLoopEnd'],
+      videoLoopActive: json['videoLoopActive'] ?? false,
+      videoLoopStartRectangleId: json['videoLoopStartRectangleId'],
+      videoLoopEndRectangleId: json['videoLoopEndRectangleId'],
     );
   }
 
@@ -99,6 +126,11 @@ class SongArchive {
       countInEnabled: this.metronomeSettings.countInEnabled,
       volume: this.metronomeSettings.volume,
       mode: this.metronomeSettings.mode == 'beat' ? MetronomeMode.beat : MetronomeMode.video,
+      loopStartBeat: this.metronomeSettings.loopStartBeat,
+      loopEndBeat: this.metronomeSettings.loopEndBeat,
+      isLoopActive: this.metronomeSettings.isLoopActive,
+      loopStartRectangleId: this.metronomeSettings.loopStartRectangleId,
+      loopEndRectangleId: this.metronomeSettings.loopEndRectangleId,
     );
 
     return Song(
@@ -108,6 +140,11 @@ class SongArchive {
       videoUrl: youtubeUrl,
       metronomeSettings: metronomeSettings,
       createdAt: createdAt,
+      videoLoopStart: videoLoopStart != null ? Duration(milliseconds: videoLoopStart!) : null,
+      videoLoopEnd: videoLoopEnd != null ? Duration(milliseconds: videoLoopEnd!) : null,
+      videoLoopActive: videoLoopActive,
+      videoLoopStartRectangleId: videoLoopStartRectangleId,
+      videoLoopEndRectangleId: videoLoopEndRectangleId,
     );
   }
 }
@@ -201,6 +238,13 @@ class MetronomeSettingsData {
   final bool enabled;
   final String mode;
 
+  // Loop settings for Beat Mode
+  final int? loopStartBeat;
+  final int? loopEndBeat;
+  final bool isLoopActive;
+  final String? loopStartRectangleId;
+  final String? loopEndRectangleId;
+
   const MetronomeSettingsData({
     required this.bpm,
     required this.timeSignature,
@@ -208,6 +252,11 @@ class MetronomeSettingsData {
     required this.volume,
     required this.enabled,
     required this.mode,
+    this.loopStartBeat,
+    this.loopEndBeat,
+    this.isLoopActive = false,
+    this.loopStartRectangleId,
+    this.loopEndRectangleId,
   });
 
   factory MetronomeSettingsData.fromMetronomeSettings(dynamic metronomeSettings) {
@@ -219,6 +268,11 @@ class MetronomeSettingsData {
       volume: metronomeSettings.volume,
       enabled: metronomeSettings.isEnabled,
       mode: metronomeSettings.mode.name,
+      loopStartBeat: metronomeSettings.loopStartBeat,
+      loopEndBeat: metronomeSettings.loopEndBeat,
+      isLoopActive: metronomeSettings.isLoopActive,
+      loopStartRectangleId: metronomeSettings.loopStartRectangleId,
+      loopEndRectangleId: metronomeSettings.loopEndRectangleId,
     );
   }
 
@@ -230,6 +284,11 @@ class MetronomeSettingsData {
       'volume': volume,
       'enabled': enabled,
       'mode': mode,
+      'loopStartBeat': loopStartBeat,
+      'loopEndBeat': loopEndBeat,
+      'isLoopActive': isLoopActive,
+      'loopStartRectangleId': loopStartRectangleId,
+      'loopEndRectangleId': loopEndRectangleId,
     };
   }
 
@@ -241,6 +300,11 @@ class MetronomeSettingsData {
       volume: json['volume'].toDouble(),
       enabled: json['enabled'],
       mode: json['mode'] ?? 'video',
+      loopStartBeat: json['loopStartBeat'],
+      loopEndBeat: json['loopEndBeat'],
+      isLoopActive: json['isLoopActive'] ?? false,
+      loopStartRectangleId: json['loopStartRectangleId'],
+      loopEndRectangleId: json['loopEndRectangleId'],
     );
   }
 }

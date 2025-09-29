@@ -8,6 +8,13 @@ class MetronomeSettings {
   final double volume;
   final MetronomeMode mode;
 
+  // Loop settings for Beat Mode
+  final int? loopStartBeat;
+  final int? loopEndBeat;
+  final bool isLoopActive;
+  final String? loopStartRectangleId;
+  final String? loopEndRectangleId;
+
   MetronomeSettings({
     this.isEnabled = false,
     this.bpm = 120,
@@ -15,6 +22,11 @@ class MetronomeSettings {
     this.countInEnabled = true,
     this.volume = 0.7,
     this.mode = MetronomeMode.video,
+    this.loopStartBeat,
+    this.loopEndBeat,
+    this.isLoopActive = false,
+    this.loopStartRectangleId,
+    this.loopEndRectangleId,
   });
 
   MetronomeSettings copyWith({
@@ -24,6 +36,14 @@ class MetronomeSettings {
     bool? countInEnabled,
     double? volume,
     MetronomeMode? mode,
+    int? loopStartBeat,
+    int? loopEndBeat,
+    bool? isLoopActive,
+    String? loopStartRectangleId,
+    String? loopEndRectangleId,
+    bool clearLoopStart = false,
+    bool clearLoopEnd = false,
+    bool clearLoopRectangleIds = false,
   }) {
     return MetronomeSettings(
       isEnabled: isEnabled ?? this.isEnabled,
@@ -32,6 +52,11 @@ class MetronomeSettings {
       countInEnabled: countInEnabled ?? this.countInEnabled,
       volume: volume ?? this.volume,
       mode: mode ?? this.mode,
+      loopStartBeat: clearLoopStart ? null : (loopStartBeat ?? this.loopStartBeat),
+      loopEndBeat: clearLoopEnd ? null : (loopEndBeat ?? this.loopEndBeat),
+      isLoopActive: isLoopActive ?? this.isLoopActive,
+      loopStartRectangleId: clearLoopRectangleIds ? null : (loopStartRectangleId ?? this.loopStartRectangleId),
+      loopEndRectangleId: clearLoopRectangleIds ? null : (loopEndRectangleId ?? this.loopEndRectangleId),
     );
   }
 
@@ -43,6 +68,11 @@ class MetronomeSettings {
       'countInEnabled': countInEnabled,
       'volume': volume,
       'mode': mode.name,
+      'loopStartBeat': loopStartBeat,
+      'loopEndBeat': loopEndBeat,
+      'isLoopActive': isLoopActive,
+      'loopStartRectangleId': loopStartRectangleId,
+      'loopEndRectangleId': loopEndRectangleId,
     };
   }
 
@@ -65,6 +95,11 @@ class MetronomeSettings {
       countInEnabled: json['countInEnabled'] ?? true,
       volume: json['volume'] ?? 0.7,
       mode: mode,
+      loopStartBeat: json['loopStartBeat'],
+      loopEndBeat: json['loopEndBeat'],
+      isLoopActive: json['isLoopActive'] ?? false,
+      loopStartRectangleId: json['loopStartRectangleId'],
+      loopEndRectangleId: json['loopEndRectangleId'],
     );
   }
 }

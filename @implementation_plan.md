@@ -702,3 +702,25 @@ lib/
   - Edge case handling: Auto-clears loops when deleting sync points or switching modes
   - Visual indicators: Loop start rectangles highlighted in green, loop end in red
   - Mode isolation: Each mode maintains separate loop state, cleared when switching modes
+- **Enhanced loop feature UI and fixed playback transitions**:
+  - Moved loop toggle button from transport controls to same row as BPM display for better space utilization
+  - Converted inline loop status text to overlay positioned at top-left of metronome overlay
+  - Added proper loop status overlays for both Beat Mode and Video Mode with "Loop: M1-M3" format
+  - Fixed count-in to main beat transition to respect loop behavior when looping back
+  - Added loop monitoring during count-in method to handle loop-back with count-in properly
+  - Enhanced loop status overlay with transparent background and white text for visibility
+- **Implemented complete loop settings persistence**:
+  - Added loop settings fields to MetronomeSettings model for Beat Mode persistence
+  - Added video loop settings fields to Song model for Video Mode persistence
+  - Updated all serialization (toJson/fromJson) methods to include loop data
+  - Connected VideoProvider and SongProvider with callback mechanism for real-time loop saving
+  - Updated song archive export/import to include both Beat Mode and Video Mode loop settings
+  - Loop configurations now persist across app restarts and are included in song sharing
+  - Backward compatibility maintained with existing songs and archives
+- **Fixed metronome synchronization and transition issues**:
+  - Resolved count-in to main beat transition causing jumps from beat 1 to beat 3
+  - Added metronome synchronization helper method to ensure consistent BPM, time signature, and volume
+  - Fixed double increment issue in beat counting during count-in transitions
+  - Improved accent timing alignment by using synchronized metronome settings throughout
+  - Eliminated audio stutter during count-in to main transition by removing problematic stop/restart sequence
+  - Enhanced beat counting consistency between UI display and metronome library internal state

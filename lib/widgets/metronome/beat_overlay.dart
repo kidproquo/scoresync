@@ -32,8 +32,6 @@ class BeatOverlay extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (metronomeProvider.isLoopActive)
-                      _buildLoopStatus(metronomeProvider),
                     _buildMeasureDisplay(metronomeProvider),
                     const SizedBox(height: 1),
                     _buildBeatVisualization(metronomeProvider),
@@ -50,6 +48,13 @@ class BeatOverlay extends StatelessWidget {
                   currentBeat: metronomeProvider.currentBeat,
                   totalBeats: metronomeProvider.settings.timeSignature.numerator,
                 ),
+              ),
+            // Loop status overlay at top
+            if (metronomeProvider.isLoopActive)
+              Positioned(
+                top: 20,
+                left: 20,
+                child: _buildLoopStatusOverlay(metronomeProvider),
               ),
             // Controls overlay at bottom
             Positioned(
@@ -158,6 +163,19 @@ class BeatOverlay extends StatelessWidget {
             const PopupMenuItem(value: 1.2, child: Text('1.2x')),
           ],
         ),
+        const SizedBox(width: 8),
+        // Loop toggle button
+        IconButton(
+          icon: Icon(
+            provider.isLoopActive ? Icons.repeat_on : Icons.repeat,
+            color: provider.isLoopActive ? Colors.blue : Colors.grey[400],
+            size: 18,
+          ),
+          onPressed: provider.canLoop ? () => provider.toggleLoop() : null,
+          padding: const EdgeInsets.all(4),
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          tooltip: 'Toggle Loop',
+        ),
       ],
     );
   }
@@ -257,27 +275,12 @@ class BeatOverlay extends StatelessWidget {
               minHeight: 44,
             ),
           ),
-          // Loop toggle button
-          IconButton(
-            icon: Icon(
-              provider.isLoopActive ? Icons.repeat_on : Icons.repeat,
-              color: provider.isLoopActive ? Colors.blue : Colors.white,
-              size: 20,
-            ),
-            onPressed: provider.canLoop ? () => provider.toggleLoop() : null,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 44,
-              minHeight: 44,
-            ),
-            tooltip: 'Toggle Loop',
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildLoopStatus(MetronomeProvider provider) {
+  Widget _buildLoopStatusOverlay(MetronomeProvider provider) {
     if (!provider.isLoopActive || provider.loopStartBeat == null || provider.loopEndBeat == null) {
       return const SizedBox.shrink();
     }
@@ -287,23 +290,22 @@ class BeatOverlay extends StatelessWidget {
     final endMeasure = ((provider.loopEndBeat! - 1) ~/ beatsPerMeasure) + 1;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.5)),
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.6)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.repeat, color: Colors.blue, size: 16),
+          const Icon(Icons.repeat, color: Colors.blue, size: 14),
           const SizedBox(width: 6),
           Text(
             'Loop: M$startMeasure-M$endMeasure',
             style: const TextStyle(
               color: Colors.blue,
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),

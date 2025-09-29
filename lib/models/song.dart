@@ -13,6 +13,13 @@ class Song {
   final DateTime createdAt;
   final DateTime lastModified;
 
+  // Video loop settings
+  final Duration? videoLoopStart;
+  final Duration? videoLoopEnd;
+  final bool videoLoopActive;
+  final String? videoLoopStartRectangleId;
+  final String? videoLoopEndRectangleId;
+
   Song({
     required this.name,
     this.pdfPath,
@@ -21,6 +28,11 @@ class Song {
     MetronomeSettings? metronomeSettings,
     DateTime? createdAt,
     DateTime? lastModified,
+    this.videoLoopStart,
+    this.videoLoopEnd,
+    this.videoLoopActive = false,
+    this.videoLoopStartRectangleId,
+    this.videoLoopEndRectangleId,
   })  : rectangles = rectangles ?? [],
         metronomeSettings = metronomeSettings ?? MetronomeSettings(),
         createdAt = createdAt ?? DateTime.now(),
@@ -34,6 +46,13 @@ class Song {
     MetronomeSettings? metronomeSettings,
     DateTime? createdAt,
     DateTime? lastModified,
+    Duration? videoLoopStart,
+    Duration? videoLoopEnd,
+    bool? videoLoopActive,
+    String? videoLoopStartRectangleId,
+    String? videoLoopEndRectangleId,
+    bool clearVideoLoopStart = false,
+    bool clearVideoLoopEnd = false,
   }) {
     return Song(
       name: name ?? this.name,
@@ -43,6 +62,11 @@ class Song {
       metronomeSettings: metronomeSettings ?? this.metronomeSettings,
       createdAt: createdAt ?? this.createdAt,
       lastModified: lastModified ?? DateTime.now(),
+      videoLoopStart: clearVideoLoopStart ? null : (videoLoopStart ?? this.videoLoopStart),
+      videoLoopEnd: clearVideoLoopEnd ? null : (videoLoopEnd ?? this.videoLoopEnd),
+      videoLoopActive: videoLoopActive ?? this.videoLoopActive,
+      videoLoopStartRectangleId: clearVideoLoopStart ? null : (videoLoopStartRectangleId ?? this.videoLoopStartRectangleId),
+      videoLoopEndRectangleId: clearVideoLoopEnd ? null : (videoLoopEndRectangleId ?? this.videoLoopEndRectangleId),
     );
   }
 
@@ -92,6 +116,11 @@ class Song {
       'metronomeSettings': metronomeSettings.toJson(),
       'createdAt': createdAt.toIso8601String(),
       'lastModified': lastModified.toIso8601String(),
+      'videoLoopStart': videoLoopStart?.inMilliseconds,
+      'videoLoopEnd': videoLoopEnd?.inMilliseconds,
+      'videoLoopActive': videoLoopActive,
+      'videoLoopStartRectangleId': videoLoopStartRectangleId,
+      'videoLoopEndRectangleId': videoLoopEndRectangleId,
     };
   }
 
@@ -109,6 +138,15 @@ class Song {
           : MetronomeSettings(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       lastModified: DateTime.parse(json['lastModified'] as String),
+      videoLoopStart: json['videoLoopStart'] != null
+          ? Duration(milliseconds: json['videoLoopStart'] as int)
+          : null,
+      videoLoopEnd: json['videoLoopEnd'] != null
+          ? Duration(milliseconds: json['videoLoopEnd'] as int)
+          : null,
+      videoLoopActive: json['videoLoopActive'] ?? false,
+      videoLoopStartRectangleId: json['videoLoopStartRectangleId'] as String?,
+      videoLoopEndRectangleId: json['videoLoopEndRectangleId'] as String?,
     );
   }
 

@@ -819,3 +819,13 @@ lib/
   - Replaced conditional horizontal scrolling with always-enabled scrolling for video overlays
   - Applied fix to both design mode and playback mode video control rows
   - Ensures video overlay controls are horizontally scrollable when they don't fit container width
+- **Fixed comprehensive metronome measure counting and resume issues**:
+  - Implemented absolute beat counting system to handle metronome plugin's per-measure tick events (0,1,2,3 repeating)
+  - Added _absoluteBeatCount field to track beats continuously across measures for accurate measure calculation
+  - Fixed measure numbers not incrementing issue: totalBeats getter now returns _absoluteBeatCount instead of _totalBeats
+  - Solved resume timing problems by using _absoluteBeatCount > 0 instead of _totalBeats > 0 for resume detection
+  - Fixed count-in resume behavior to continue from correct measure instead of jumping back to measure 1
+  - Added _isInPlaybackMode tracking to prevent count-in from triggering in design mode
+  - Created _resumeFromBeat system to preserve resume position through count-in sequences
+  - Ensured measure counters (_totalBeats and _absoluteBeatCount) stay synchronized across all operations
+  - Fixed count-in exit logic to properly increment from saved resume position rather than always starting at beat 1

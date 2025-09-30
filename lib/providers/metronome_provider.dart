@@ -14,15 +14,18 @@ class MetronomeProvider extends ChangeNotifier {
   bool _isPlaying = false;
   bool _isPreviewing = false;
   double _playbackRate = 1.0;
+  bool _isInPlaybackMode = false;
+  int? _resumeFromBeat; // Track where to resume after count-in
 
   // Beat tracking for Beat Mode
   StreamSubscription<int>? _tickSubscription;
   int _totalBeats = 0;
+  int _absoluteBeatCount = 0; // Track absolute beats across measures
   Function(int beat)? _onBeat;
   Function(int beat)? _onLoopPageCheck;
 
-  // Android metronome plays immediately when started, while iOS waits for first tick
-  // This causes a 1-beat offset that we compensate for in tick handling
+  // Metronome plugin sends tick events per measure (0,1,2,3 repeating)
+  // We need to track absolute beat count ourselves
 
   // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
@@ -33,14 +36,21 @@ class MetronomeProvider extends ChangeNotifier {
   bool get isCountingIn => _isCountingIn;
   bool get isPreviewing => _isPreviewing;
   int get currentBeat => _currentBeat;
-  int get totalBeats => _totalBeats;
+  int get totalBeats => _absoluteBeatCount;
   double get playbackRate => _playbackRate;
   int get effectiveBPM => (_settings.bpm * _playbackRate).round();
   int get currentMeasure {
     final effectiveBeats = totalBeats;
-    return effectiveBeats > 0
+    final measure = effectiveBeats > 0
         ? ((effectiveBeats - 1) ~/ _settings.timeSignature.numerator) + 1
         : 1;
+
+    // Debug logging for measure calculation
+    if (effectiveBeats <= 20) {
+      developer.log('[MEASURE] effectiveBeats=$effectiveBeats, timeSignature=${_settings.timeSignature.numerator}, calculated measure=$measure');
+    }
+
+    return measure;
   }
 
   // Loop state getters (read from settings)
@@ -175,22 +185,38 @@ class MetronomeProvider extends ChangeNotifier {
 
   void startMetronome({bool isSeeking = false, bool isPlaybackMode = false}) {
     final isBeatMode = _settings.mode == MetronomeMode.beat;
+    _isInPlaybackMode = isPlaybackMode;
 
     // Only check isEnabled in Video mode; Beat mode can always start
     if (!_settings.isEnabled && !isBeatMode) return;
 
-    final isResuming = _totalBeats > 0 && !isSeeking;
+    final isResuming = _absoluteBeatCount > 0 && !isSeeking;
+
+    // Save the current measure BEFORE modifying counters for resume logic
+    final resumeMeasure = isResuming ? currentMeasure : 1;
 
     if (isResuming) {
       final beatsPerMeasure = _settings.timeSignature.numerator;
-      final currentMeasureStartBeat = ((currentMeasure - 1) * beatsPerMeasure) + 1;
+      final currentMeasureStartBeat = ((resumeMeasure - 1) * beatsPerMeasure) + 1;
       _totalBeats = currentMeasureStartBeat - 1;
+      _absoluteBeatCount = currentMeasureStartBeat - 1; // Keep absolute count in sync
       _currentBeat = 0;
-      developer.log('Resuming from start of measure $currentMeasure (totalBeats reset to $_totalBeats)');
+      developer.log('Resuming from start of measure $resumeMeasure (totalBeats reset to $_totalBeats, absoluteBeatCount reset to $_absoluteBeatCount)');
     }
 
     // If Beat Mode, playback mode, and count-in enabled, start with count-in
-    if (isBeatMode && isPlaybackMode && _settings.countInEnabled) {
+    if (isBeatMode && _isInPlaybackMode && _settings.countInEnabled) {
+      // If resuming, save the position to resume from after count-in
+      if (isResuming) {
+        // Calculate the start of the measure where we paused
+        final beatsPerMeasure = _settings.timeSignature.numerator;
+        final currentMeasureStartBeat = ((resumeMeasure - 1) * beatsPerMeasure) + 1;
+        // We want to resume at beat 1 of this measure, so back up by 1 since tick will increment
+        _resumeFromBeat = currentMeasureStartBeat - 1;
+        developer.log('Count-in resume: paused at measure $resumeMeasure, will resume from beat $currentMeasureStartBeat (backed up to $_resumeFromBeat)');
+      } else {
+        _resumeFromBeat = null; // Start fresh
+      }
       _startWithCountIn();
       return;
     }
@@ -212,23 +238,24 @@ class MetronomeProvider extends ChangeNotifier {
       (int tick) {
         developer.log('[${Platform.operatingSystem.toUpperCase()}] Raw tick received: $tick, _isCountingIn: $_isCountingIn');
         if (!_isCountingIn) {
-          // With the plugin fix, both platforms should start with tick 0 at the first sound
-          _totalBeats = tick + 1;
+          // Increment absolute beat count on every tick
+          _absoluteBeatCount++;
 
-          final effectiveTotalBeats = _totalBeats;
+          // Calculate current beat within measure from tick (0-based from plugin)
+          _currentBeat = (tick % _settings.timeSignature.numerator) + 1;
 
-          _currentBeat = ((effectiveTotalBeats - 1) % _settings.timeSignature.numerator) + 1;
-
-          _onBeat?.call(effectiveTotalBeats);
+          _onBeat?.call(_absoluteBeatCount);
 
           // Only log every beat or first few beats to avoid spam
-          if (_totalBeats <= 5 || _currentBeat == 1) {
-            developer.log('[${Platform.operatingSystem.toUpperCase()}] Tick: totalBeats=$_totalBeats, currentBeat=$_currentBeat, measure=$currentMeasure (raw tick: $tick)');
+          if (_absoluteBeatCount <= 10 || _currentBeat == 1) {
+            developer.log('[${Platform.operatingSystem.toUpperCase()}] Tick: absoluteBeats=$_absoluteBeatCount, currentBeat=$_currentBeat, measure=$currentMeasure (raw tick: $tick)');
           }
 
+          notifyListeners();
+
           // Check for loop end in Beat Mode - stop after first beat of next measure, wait 3s, then restart
-          if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
-            developer.log('[${Platform.operatingSystem.toUpperCase()}] Loop end reached at beat $_totalBeats, stopping for 3-second pause before restart');
+          if (_settings.isLoopActive && _settings.loopEndBeat != null && _absoluteBeatCount > _settings.loopEndBeat!) {
+            developer.log('[${Platform.operatingSystem.toUpperCase()}] Loop end reached at beat $_absoluteBeatCount, stopping for 3-second pause before restart');
 
             // Stop the metronome
             pauseMetronome();
@@ -246,14 +273,15 @@ class MetronomeProvider extends ChangeNotifier {
                 // Set beat position to one before loop start so first tick lands on loop start
                 final targetBeat = _settings.loopStartBeat!;
                 _totalBeats = targetBeat > 0 ? targetBeat - 1 : 0;
+                _absoluteBeatCount = targetBeat > 0 ? targetBeat - 1 : 0; // Keep absolute count in sync
                 _currentBeat = 0;
                 notifyListeners();
 
-                // Include count-in if enabled
-                if (_settings.countInEnabled) {
+                // Include count-in if enabled and in playback mode
+                if (_settings.countInEnabled && _isInPlaybackMode) {
                   _startWithCountIn();
                 } else {
-                  startMetronome(isSeeking: true);
+                  startMetronome(isSeeking: true, isPlaybackMode: _isInPlaybackMode);
                 }
               }
             });
@@ -294,7 +322,7 @@ class MetronomeProvider extends ChangeNotifier {
       (int tick) {
         developer.log('[${Platform.operatingSystem.toUpperCase()}] Count-in raw tick: $tick, _isCountingIn: $_isCountingIn, countInComplete: $countInComplete');
         if (_isCountingIn && !countInComplete) {
-          // With the plugin fix, both platforms send tick 0 immediately when play() is called
+          // Count-in beats from plugin tick (0-based)
           countInBeatsPlayed = tick + 1;
           _currentBeat = countInBeatsPlayed;
           notifyListeners();
@@ -309,21 +337,25 @@ class MetronomeProvider extends ChangeNotifier {
           // Exit count-in mode now - this tick IS the first beat of main playback
           _isCountingIn = false;
 
-          // With the plugin fix, both platforms use the same tick numbering
-          _totalBeats = tick + 1;
-          _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
-          _onBeat?.call(_totalBeats);
-          developer.log('[${Platform.operatingSystem.toUpperCase()}] Exited count-in, starting normal playback on beat $_currentBeat (total beats: $_totalBeats, raw tick: $tick)');
+          // Resume from saved position or start from beat 1
+          // The first tick after count-in should increment from the saved position
+          _absoluteBeatCount = (_resumeFromBeat ?? 0) + 1;
+          _currentBeat = (tick % _settings.timeSignature.numerator) + 1;
+          _onBeat?.call(_absoluteBeatCount);
+          developer.log('[${Platform.operatingSystem.toUpperCase()}] Exited count-in, starting normal playback on beat $_currentBeat (absolute beats: $_absoluteBeatCount, resumeFromBeat: $_resumeFromBeat, raw tick: $tick)');
+          _resumeFromBeat = null; // Clear after use
           notifyListeners();
         } else {
-          // Normal playback - with plugin fix, both platforms use same numbering
-          _totalBeats = tick + 1;
-          _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
-          _onBeat?.call(_totalBeats);
+          // Normal playback within count-in method
+          _absoluteBeatCount++;
+          _currentBeat = (tick % _settings.timeSignature.numerator) + 1;
+          _onBeat?.call(_absoluteBeatCount);
           // Only log every beat or first few beats to avoid spam
-          if (_totalBeats <= 5 || _currentBeat == 1) {
-            developer.log('[${Platform.operatingSystem.toUpperCase()}] Normal tick: totalBeats=$_totalBeats, currentBeat=$_currentBeat, measure=$currentMeasure (raw tick: $tick)');
+          if (_absoluteBeatCount <= 10 || _currentBeat == 1) {
+            developer.log('[${Platform.operatingSystem.toUpperCase()}] Normal tick: absoluteBeats=$_absoluteBeatCount, currentBeat=$_currentBeat, measure=$currentMeasure (raw tick: $tick)');
           }
+
+          notifyListeners();
 
           // Check for loop end in Beat Mode (also needed in count-in method) - stop after first beat of next measure, wait 3s, then restart
           if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
@@ -345,14 +377,15 @@ class MetronomeProvider extends ChangeNotifier {
                 // Set beat position to one before loop start so first tick lands on loop start
                 final targetBeat = _settings.loopStartBeat!;
                 _totalBeats = targetBeat > 0 ? targetBeat - 1 : 0;
+                _absoluteBeatCount = targetBeat > 0 ? targetBeat - 1 : 0; // Keep absolute count in sync
                 _currentBeat = 0;
                 notifyListeners();
 
-                // Include count-in if enabled
-                if (_settings.countInEnabled) {
+                // Include count-in if enabled and in playback mode
+                if (_settings.countInEnabled && _isInPlaybackMode) {
                   _startWithCountIn();
                 } else {
-                  startMetronome(isSeeking: true);
+                  startMetronome(isSeeking: true, isPlaybackMode: _isInPlaybackMode);
                 }
               }
             });
@@ -426,6 +459,7 @@ class MetronomeProvider extends ChangeNotifier {
     _isPreviewing = false;
     _currentBeat = 0;
     _totalBeats = 0;
+    _absoluteBeatCount = 0;
     _isCountingIn = false;
 
     // Synchronize metronome to ensure clean state for next start
@@ -528,8 +562,9 @@ class MetronomeProvider extends ChangeNotifier {
     final targetBeat = (measureNumber - 1) * beatsPerMeasure;
 
     _totalBeats = targetBeat;
+    _absoluteBeatCount = targetBeat; // Keep absolute count in sync
     _currentBeat = 0;
-    developer.log('Seeked to measure $measureNumber (total beat $_totalBeats)');
+    developer.log('Seeked to measure $measureNumber (total beat $_totalBeats, absoluteBeatCount=$_absoluteBeatCount)');
     notifyListeners();
 
     if (wasPlaying) {
@@ -546,16 +581,18 @@ class MetronomeProvider extends ChangeNotifier {
     }
 
     // Set to actual beat number for display
-    _totalBeats = beatNumber;
+    _totalBeats = beatNumber; // Keep legacy counter in sync
+    _absoluteBeatCount = beatNumber;
     _currentBeat = beatNumber == 0 ? 0 : ((beatNumber - 1) % _settings.timeSignature.numerator) + 1;
-    developer.log('[${Platform.operatingSystem.toUpperCase()}] Seeked to beat $beatNumber (totalBeats set to $_totalBeats, currentBeat=$_currentBeat)');
+    developer.log('[${Platform.operatingSystem.toUpperCase()}] Seeked to beat $beatNumber (totalBeats=$_totalBeats, absoluteBeatCount=$_absoluteBeatCount, currentBeat=$_currentBeat)');
     notifyListeners();
 
     if (wasPlaying) {
       // When resuming, we need to back up one beat so it starts on the target beat
-      _totalBeats = beatNumber > 0 ? beatNumber - 1 : 0;
+      _totalBeats = beatNumber > 0 ? beatNumber - 1 : 0; // Keep legacy counter in sync
+      _absoluteBeatCount = beatNumber > 0 ? beatNumber - 1 : 0;
       _currentBeat = 0;
-      developer.log('[${Platform.operatingSystem.toUpperCase()}] Resuming after seek: totalBeats backed up to $_totalBeats, currentBeat=$_currentBeat');
+      developer.log('[${Platform.operatingSystem.toUpperCase()}] Resuming after seek: totalBeats=$_totalBeats, absoluteBeatCount=$_absoluteBeatCount, currentBeat=$_currentBeat');
       startMetronome(isSeeking: true);
     }
   }

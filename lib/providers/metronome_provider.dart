@@ -562,14 +562,20 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   void clearLoopStart() {
-    _settings = _settings.copyWith(clearLoopStart: true);
+    _settings = _settings.copyWith(
+      clearLoopStart: true,
+      clearLoopRectangleIds: true,
+    );
     _updateLoopStatus();
     notifyListeners();
     _onSettingsChanged?.call();
   }
 
   void clearLoopEnd() {
-    _settings = _settings.copyWith(clearLoopEnd: true);
+    _settings = _settings.copyWith(
+      clearLoopEnd: true,
+      clearLoopRectangleIds: true,
+    );
     _updateLoopStatus();
     notifyListeners();
     _onSettingsChanged?.call();

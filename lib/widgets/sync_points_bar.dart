@@ -96,11 +96,11 @@ class SyncPointsBar extends StatelessWidget {
     final rectangleProvider = context.read<RectangleProvider>();
     final videoProvider = context.read<VideoProvider>();
 
-    // Clear loop markers if this rectangle is a loop marker
-    if (videoProvider.loopStartRectangleId == rectangle.id) {
+    // Clear loop markers only if deleting the specific timestamp used by the loop
+    if (videoProvider.loopStartRectangleId == rectangle.id && videoProvider.loopStartTime == timestamp) {
       videoProvider.clearLoopStart();
     }
-    if (videoProvider.loopEndRectangleId == rectangle.id) {
+    if (videoProvider.loopEndRectangleId == rectangle.id && videoProvider.loopEndTime == timestamp) {
       videoProvider.clearLoopEnd();
     }
 
@@ -120,15 +120,17 @@ class SyncPointsBar extends StatelessWidget {
     final rectangleProvider = context.read<RectangleProvider>();
     final metronomeProvider = context.read<MetronomeProvider>();
 
-    // Clear loop markers if this rectangle is a loop marker
-    if (metronomeProvider.loopStartRectangleId == rectangle.id) {
+    // Remove the beat first
+    rectangle.removeBeatNumber(beatNumber);
+
+    // Clear loop markers if this rectangle will have no more beats after deletion
+    if (metronomeProvider.loopStartRectangleId == rectangle.id && rectangle.beatNumbers.isEmpty) {
       metronomeProvider.clearLoopStart();
     }
-    if (metronomeProvider.loopEndRectangleId == rectangle.id) {
+    if (metronomeProvider.loopEndRectangleId == rectangle.id && rectangle.beatNumbers.isEmpty) {
       metronomeProvider.clearLoopEnd();
     }
 
-    rectangle.removeBeatNumber(beatNumber);
     rectangleProvider.updateRectangleTimestamps();
 
     ScaffoldMessenger.of(context).showSnackBar(

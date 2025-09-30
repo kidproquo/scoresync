@@ -792,3 +792,10 @@ lib/
   - Enhanced logging to show both raw and effective beat counts for debugging
   - Updated totalBeats and currentMeasure getters to return corrected values on Android
   - Ensures sync points activate at correct audio timing rather than visual beat numbers
+- **Fixed metronome accent volume inconsistency**:
+  - Identified root cause: setVolume() calls on every playback start causing first beat to be quiet
+  - Removed redundant setVolume() calls from _synchronizeMetronome() and playback methods
+  - Volume now only set at initialization and when user adjusts slider in setVolume() method
+  - Maintained volume setting for preview methods to ensure proper preview functionality
+  - Fixed preview button not working by removing unnecessary enabled state check
+  - Ensures consistent accent volume from first beat onwards across all playback modes

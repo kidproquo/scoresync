@@ -87,8 +87,8 @@ class MetronomeProvider extends ChangeNotifier {
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
     _metronome.setBPM(effectiveBPM);
     _metronome.setTimeSignature(_settings.timeSignature.numerator);
-    _metronome.setVolume((_settings.volume * 100).round());
-    developer.log('Metronome synchronized: BPM=$effectiveBPM, timeSignature=${_settings.timeSignature.numerator}, volume=${(_settings.volume * 100).round()}');
+    // Volume is set only at initialization and when slider changes, not on every playback
+    developer.log('Metronome synchronized: BPM=$effectiveBPM, timeSignature=${_settings.timeSignature.numerator}');
   }
 
   void updateSettings(MetronomeSettings newSettings) {
@@ -109,12 +109,10 @@ class MetronomeProvider extends ChangeNotifier {
     // Update both metronome settings
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
     _metronome.setBPM(effectiveBPM);
-    _metronome.setVolume((_settings.volume * 100).round());
     _metronome.setTimeSignature(_settings.timeSignature.numerator);
 
     // Update count-in metronome as well
     _countInMetronome.setBPM(effectiveBPM);
-    _countInMetronome.setVolume((_settings.volume * 100).round());
     _countInMetronome.setTimeSignature(_settings.timeSignature.numerator);
 
     notifyListeners();
@@ -159,6 +157,11 @@ class MetronomeProvider extends ChangeNotifier {
 
   void setVolume(double volume) {
     final clampedVolume = volume.clamp(0.0, 1.0);
+
+    // Immediately update the metronome volume
+    _metronome.setVolume((clampedVolume * 100).round());
+    _countInMetronome.setVolume((clampedVolume * 100).round());
+
     updateSettings(_settings.copyWith(volume: clampedVolume));
   }
 
@@ -476,7 +479,7 @@ class MetronomeProvider extends ChangeNotifier {
     // Configure count-in metronome with same settings
     _countInMetronome.setBPM(effectiveBPM);
     _countInMetronome.setTimeSignature(_settings.timeSignature.numerator);
-    _countInMetronome.setVolume((_settings.volume * 100).round());
+    // Volume already set at initialization and when slider changes
 
     try {
       // Manual count-in with precise timing
@@ -589,7 +592,7 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   void startPreview() {
-    if (!_settings.isEnabled) return;
+    // Preview should work regardless of enabled state - it's just for testing
 
     // Stop main metronome if playing
     if (_isPlaying) {
@@ -601,7 +604,7 @@ class MetronomeProvider extends ChangeNotifier {
     // Configure and start metronome for preview (use main metronome)
     _metronome.setBPM(_settings.bpm);
     _metronome.setTimeSignature(_settings.timeSignature.numerator);
-    _metronome.setVolume((_settings.volume * 100).round());
+    _metronome.setVolume((_settings.volume * 100).round()); // Ensure volume is set for preview
 
     _metronome.play();
     _isPreviewing = true;
@@ -634,7 +637,7 @@ class MetronomeProvider extends ChangeNotifier {
       // Apply new settings
       _metronome.setBPM(_settings.bpm);
       _metronome.setTimeSignature(_settings.timeSignature.numerator);
-      _metronome.setVolume((_settings.volume * 100).round());
+      _metronome.setVolume((_settings.volume * 100).round()); // Ensure volume for preview resume
       _metronome.play();
     }
   }

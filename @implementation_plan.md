@@ -739,3 +739,8 @@ lib/
   - Cleaned up unused badge drawing methods from rectangle_painter.dart and rectangle_overlay.dart
   - Simplified rectangle rendering to only show indicator dots for sync points instead of full badges
   - Unified sync point interaction through dedicated sync bar interface for cleaner UI separation
+- **Enhanced beat mode loop timing for musical accuracy**:
+  - Modified loop condition to wait for final beat completion before looping (changed from >= to > loopEndBeat)
+  - Loop now triggers after the final beat is fully played rather than cutting off mid-beat
+  - Applied timing fix to both main tick handler and count-in completion handler
+  - Provides more natural musical phrasing and measure completion in beat mode loops

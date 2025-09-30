@@ -203,9 +203,9 @@ class MetronomeProvider extends ChangeNotifier {
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
 
-          // Check for loop end in Beat Mode
-          if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats >= _settings.loopEndBeat!) {
-            developer.log('Loop end reached at beat $_totalBeats, jumping to start beat ${_settings.loopStartBeat}');
+          // Check for loop end in Beat Mode - wait until after the final beat of the end measure
+          if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
+            developer.log('Loop end measure completed at beat $_totalBeats, jumping to start beat ${_settings.loopStartBeat}');
 
             // Include count-in if enabled
             if (_settings.countInEnabled && _settings.loopStartBeat != null) {
@@ -277,9 +277,9 @@ class MetronomeProvider extends ChangeNotifier {
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
 
-          // Check for loop end in Beat Mode (also needed in count-in method)
-          if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats >= _settings.loopEndBeat!) {
-            developer.log('Loop end reached at beat $_totalBeats, jumping to start beat ${_settings.loopStartBeat}');
+          // Check for loop end in Beat Mode (also needed in count-in method) - wait until after the final beat
+          if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
+            developer.log('Loop end measure completed at beat $_totalBeats, jumping to start beat ${_settings.loopStartBeat}');
 
             // Include count-in if enabled
             if (_settings.countInEnabled && _settings.loopStartBeat != null) {

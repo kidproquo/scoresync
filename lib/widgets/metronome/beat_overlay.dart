@@ -24,7 +24,7 @@ class BeatOverlay extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   if (metronomeProvider.isPlaying) {
-                    metronomeProvider.stopMetronome();
+                    metronomeProvider.pauseMetronome();
                   } else {
                     metronomeProvider.startMetronome(isPlaybackMode: !isDesignMode);
                   }
@@ -221,7 +221,7 @@ class BeatOverlay extends StatelessWidget {
             child: InkWell(
               onTap: () {
                 if (provider.isPlaying) {
-                  provider.stopMetronome();
+                  provider.pauseMetronome();
                 } else {
                   provider.startMetronome(isPlaybackMode: !isDesignMode);
                 }

@@ -302,6 +302,20 @@ class MetronomeProvider extends ChangeNotifier {
     developer.log('Count-in started');
   }
 
+  void pauseMetronome() {
+    _metronome.pause();
+    _countInMetronome.pause();
+    _isPlaying = false;
+    _isPreviewing = false;
+    _isCountingIn = false;
+
+    // Pause preserves position - no seeking to loop start
+
+    notifyListeners();
+
+    developer.log('Metronome paused (beat counter preserved: $_totalBeats)');
+  }
+
   void stopMetronome() {
     _metronome.pause();
     _countInMetronome.pause();
@@ -317,7 +331,7 @@ class MetronomeProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    developer.log('Metronome paused (beat counter preserved: $_totalBeats)');
+    developer.log('Metronome stopped (beat counter preserved: $_totalBeats)');
   }
 
   void resetMetronome() {

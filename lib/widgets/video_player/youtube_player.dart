@@ -358,9 +358,9 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     try {
       if (!isPlaying && (_metronomeProvider?.isPlaying ?? false)) {
         // Video was paused by some other means (e.g., clicking YouTube player)
-        // Stop the metronome
-        developer.log('Video paused externally, stopping metronome');
-        _metronomeProvider?.stopMetronome();
+        // Pause the metronome
+        developer.log('Video paused externally, pausing metronome');
+        _metronomeProvider?.pauseMetronome();
       }
       // Note: We don't start metronome here when video plays - that's handled by _onPlayPause
     } catch (e) {
@@ -374,10 +374,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     try {
       developer.log('_onPlayPause called: isPlaying=$_isPlaying');
       if (_isPlaying) {
-        // Pause video and stop metronome
-        developer.log('Pausing video and stopping metronome');
+        // Pause video and metronome
+        developer.log('Pausing video and metronome');
         _controller!.pause();
-        _metronomeProvider?.stopMetronome();
+        _metronomeProvider?.pauseMetronome();
 
         // Cancel any pending count-in timer
         _countInTimer?.cancel();
@@ -424,11 +424,17 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   void _onStop() {
     if (_controller == null || !_isPlayerReady || !mounted) return;
-    
+
     try {
-      _controller!.seekTo(Duration.zero);
+      // When loop is active in video mode, stop seeks to loop start
+      if (_videoProvider?.isLoopActive == true && _videoProvider?.loopStartTime != null) {
+        _controller!.seekTo(_videoProvider!.loopStartTime!);
+        developer.log('Loop active - seeking to loop start on stop');
+      } else {
+        _controller!.seekTo(Duration.zero);
+      }
       _controller!.pause();
-      
+
       // Stop metronome when stopping video
       _metronomeProvider?.stopMetronome();
     } catch (e) {

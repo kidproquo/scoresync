@@ -303,11 +303,7 @@ class VideoProvider extends ChangeNotifier {
     if (_pauseCallback != null && _isPlayerReady) {
       _pauseCallback!();
 
-      // When loop is active, pause seeks to loop start
-      if (_isLoopActive && _loopStartTime != null) {
-        developer.log('Loop active - seeking to loop start time ${_formatDuration(_loopStartTime!)} on pause');
-        seekTo(_loopStartTime!);
-      }
+      // Pause preserves position - no seeking to loop start
 
       developer.log('Video pause requested');
     } else {

@@ -772,3 +772,9 @@ lib/
   - Added deselection when tapping outside rectangles in both design and playback modes
   - Implemented automatic deselection when switching between design and playback modes
   - Cleaner UI with intuitive selection feedback and proper state management across mode transitions
+- **Implemented loop pause and restart timing improvements**:
+  - Added 3-second pause after loop end measure before automatic restart
+  - Loop stops after first beat of measure following the end measure for natural musical phrasing
+  - Fixed beat synchronization issues during loop restart to prevent off-by-1 counting errors
+  - Manual beat positioning ensures first beat after pause lands exactly on loop start beat
+  - Applied consistent timing behavior to both normal and count-in loop restart scenarios

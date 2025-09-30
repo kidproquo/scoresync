@@ -203,18 +203,32 @@ class MetronomeProvider extends ChangeNotifier {
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
 
-          // Check for loop end in Beat Mode - wait until after the final beat of the end measure
+          // Check for loop end in Beat Mode - stop after first beat of next measure, wait 3s, then restart
           if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
-            developer.log('Loop end measure completed at beat $_totalBeats, jumping to start beat ${_settings.loopStartBeat}');
+            developer.log('Loop end reached at beat $_totalBeats, stopping for 3-second pause before restart');
 
-            // Include count-in if enabled
-            if (_settings.countInEnabled && _settings.loopStartBeat != null) {
-              stopMetronome();
-              seekToBeat(_settings.loopStartBeat!);
-              Future.delayed(Duration.zero, () => _startWithCountIn());
-            } else if (_settings.loopStartBeat != null) {
-              seekToBeat(_settings.loopStartBeat!);
-            }
+            // Stop the metronome
+            pauseMetronome();
+
+            // Wait 3 seconds, then restart from loop start
+            Future.delayed(const Duration(seconds: 3), () {
+              if (_settings.isLoopActive && _settings.loopStartBeat != null) {
+                developer.log('3-second pause complete, restarting loop from beat ${_settings.loopStartBeat}');
+
+                // Set beat position to one before loop start so first tick lands on loop start
+                final targetBeat = _settings.loopStartBeat!;
+                _totalBeats = targetBeat > 0 ? targetBeat - 1 : 0;
+                _currentBeat = 0;
+                notifyListeners();
+
+                // Include count-in if enabled
+                if (_settings.countInEnabled) {
+                  _startWithCountIn();
+                } else {
+                  startMetronome(isSeeking: true);
+                }
+              }
+            });
           }
         }
         notifyListeners();
@@ -277,18 +291,32 @@ class MetronomeProvider extends ChangeNotifier {
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
 
-          // Check for loop end in Beat Mode (also needed in count-in method) - wait until after the final beat
+          // Check for loop end in Beat Mode (also needed in count-in method) - stop after first beat of next measure, wait 3s, then restart
           if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
-            developer.log('Loop end measure completed at beat $_totalBeats, jumping to start beat ${_settings.loopStartBeat}');
+            developer.log('Loop end reached at beat $_totalBeats, stopping for 3-second pause before restart');
 
-            // Include count-in if enabled
-            if (_settings.countInEnabled && _settings.loopStartBeat != null) {
-              stopMetronome();
-              seekToBeat(_settings.loopStartBeat!);
-              Future.delayed(Duration.zero, () => _startWithCountIn());
-            } else if (_settings.loopStartBeat != null) {
-              seekToBeat(_settings.loopStartBeat!);
-            }
+            // Stop the metronome
+            pauseMetronome();
+
+            // Wait 3 seconds, then restart from loop start
+            Future.delayed(const Duration(seconds: 3), () {
+              if (_settings.isLoopActive && _settings.loopStartBeat != null) {
+                developer.log('3-second pause complete, restarting loop from beat ${_settings.loopStartBeat}');
+
+                // Set beat position to one before loop start so first tick lands on loop start
+                final targetBeat = _settings.loopStartBeat!;
+                _totalBeats = targetBeat > 0 ? targetBeat - 1 : 0;
+                _currentBeat = 0;
+                notifyListeners();
+
+                // Include count-in if enabled
+                if (_settings.countInEnabled) {
+                  _startWithCountIn();
+                } else {
+                  startMetronome(isSeeking: true);
+                }
+              }
+            });
           }
 
           notifyListeners();

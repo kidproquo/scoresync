@@ -184,7 +184,7 @@ class MetronomeProvider extends ChangeNotifier {
       return;
     }
 
-    stopMetronome();
+    pauseMetronome();
 
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
 
@@ -229,7 +229,7 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   void _startWithCountIn() {
-    stopMetronome();
+    pauseMetronome();
 
     _isCountingIn = true;
     _isPlaying = true;

@@ -21,10 +21,8 @@ class MetronomeProvider extends ChangeNotifier {
   Function(int beat)? _onBeat;
   Function(int beat)? _onLoopPageCheck;
 
-  // Android-specific offset: Android metronome accent timing is off
-  // When we think it's beat 4, Android plays the accent (which should be beat 1)
-  // So we need to offset our counting by -3 beats on Android
-  static const int _androidBeatOffset = -3;
+  // Android metronome plays immediately when started, while iOS waits for first tick
+  // This causes a 1-beat offset that we compensate for in tick handling
 
   // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
@@ -35,17 +33,11 @@ class MetronomeProvider extends ChangeNotifier {
   bool get isCountingIn => _isCountingIn;
   bool get isPreviewing => _isPreviewing;
   int get currentBeat => _currentBeat;
-  int get totalBeats {
-    // Return adjusted beats for Android to match audio
-    if (Platform.isAndroid && _totalBeats > 3) {
-      return _totalBeats + _androidBeatOffset;
-    }
-    return _totalBeats;
-  }
+  int get totalBeats => _totalBeats;
   double get playbackRate => _playbackRate;
   int get effectiveBPM => (_settings.bpm * _playbackRate).round();
   int get currentMeasure {
-    final effectiveBeats = totalBeats; // Uses the getter which applies Android offset
+    final effectiveBeats = totalBeats;
     return effectiveBeats > 0
         ? ((effectiveBeats - 1) ~/ _settings.timeSignature.numerator) + 1
         : 1;
@@ -218,24 +210,20 @@ class MetronomeProvider extends ChangeNotifier {
     _tickSubscription?.cancel();
     _tickSubscription = _metronome.tickStream.listen(
       (int tick) {
+        developer.log('[${Platform.operatingSystem.toUpperCase()}] Raw tick received: $tick, _isCountingIn: $_isCountingIn');
         if (!_isCountingIn) {
-          _totalBeats++;
+          // On Android, metronome plays immediately when started, so tick events are offset by 1
+          _totalBeats = Platform.isAndroid ? tick + 1 : tick;
 
-          // Apply Android-specific offset: Android's accent timing is off
-          // The accent that should play on beat 1 actually plays when our counter shows beat 4
-          // So we subtract 3 beats on Android to align the visual with the audio
-          final effectiveTotalBeats = Platform.isAndroid && _totalBeats > 3
-              ? _totalBeats + _androidBeatOffset
-              : _totalBeats;
+          final effectiveTotalBeats = _totalBeats;
 
           _currentBeat = ((effectiveTotalBeats - 1) % _settings.timeSignature.numerator) + 1;
 
-          // Use the adjusted beat count for callbacks on Android
           _onBeat?.call(effectiveTotalBeats);
 
           // Only log every beat or first few beats to avoid spam
           if (_totalBeats <= 5 || _currentBeat == 1) {
-            developer.log('[${Platform.operatingSystem.toUpperCase()}] Tick: totalBeats=$_totalBeats (effective=$effectiveTotalBeats), currentBeat=$_currentBeat, measure=$currentMeasure');
+            developer.log('[${Platform.operatingSystem.toUpperCase()}] Tick: totalBeats=$_totalBeats, currentBeat=$_currentBeat, measure=$currentMeasure (raw tick: $tick)');
           }
 
           // Check for loop end in Beat Mode - stop after first beat of next measure, wait 3s, then restart
@@ -304,11 +292,14 @@ class MetronomeProvider extends ChangeNotifier {
     _tickSubscription?.cancel();
     _tickSubscription = _metronome.tickStream.listen(
       (int tick) {
+        developer.log('[${Platform.operatingSystem.toUpperCase()}] Count-in raw tick: $tick, _isCountingIn: $_isCountingIn, countInComplete: $countInComplete');
         if (_isCountingIn && !countInComplete) {
-          countInBeatsPlayed++;
+          // On Android, the first sound plays immediately when metronome.play() is called
+          // So tick 1 is actually the second beat we hear
+          countInBeatsPlayed = Platform.isAndroid ? tick + 1 : tick;
           _currentBeat = countInBeatsPlayed;
           notifyListeners();
-          developer.log('Count-in beat: $countInBeatsPlayed/$beatsPerMeasure');
+          developer.log('[${Platform.operatingSystem.toUpperCase()}] Count-in beat: $countInBeatsPlayed/$beatsPerMeasure (raw tick: $tick)');
 
           if (countInBeatsPlayed >= beatsPerMeasure) {
             // Mark count-in as complete, but don't exit yet
@@ -319,32 +310,20 @@ class MetronomeProvider extends ChangeNotifier {
           // Exit count-in mode now - this tick IS the first beat of main playback
           _isCountingIn = false;
 
-          // Increment total beats as we're now on the first beat after count-in
-          _totalBeats++;
-
-          // Apply Android offset for count-in exit
-          final effectiveTotalBeats = Platform.isAndroid && _totalBeats > 3
-              ? _totalBeats + _androidBeatOffset
-              : _totalBeats;
-
-          _currentBeat = ((effectiveTotalBeats - 1) % _settings.timeSignature.numerator) + 1;
-          _onBeat?.call(effectiveTotalBeats);
-          developer.log('[${Platform.operatingSystem.toUpperCase()}] Exited count-in, starting normal playback on beat $_currentBeat (total beats: $_totalBeats, effective=$effectiveTotalBeats)');
+          // On Android, this is the first tick after count-in, so apply offset
+          _totalBeats = Platform.isAndroid ? tick + 1 : tick;
+          _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
+          _onBeat?.call(_totalBeats);
+          developer.log('[${Platform.operatingSystem.toUpperCase()}] Exited count-in, starting normal playback on beat $_currentBeat (total beats: $_totalBeats, raw tick: $tick)');
           notifyListeners();
         } else {
           // Normal playback - increment total beats and calculate current beat
-          _totalBeats++;
-
-          // Apply Android offset for normal playback within count-in method
-          final effectiveTotalBeats = Platform.isAndroid && _totalBeats > 3
-              ? _totalBeats + _androidBeatOffset
-              : _totalBeats;
-
-          _currentBeat = ((effectiveTotalBeats - 1) % _settings.timeSignature.numerator) + 1;
-          _onBeat?.call(effectiveTotalBeats);
+          _totalBeats = Platform.isAndroid ? tick + 1 : tick;
+          _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
+          _onBeat?.call(_totalBeats);
           // Only log every beat or first few beats to avoid spam
           if (_totalBeats <= 5 || _currentBeat == 1) {
-            developer.log('[${Platform.operatingSystem.toUpperCase()}] Normal tick: totalBeats=$_totalBeats (effective=$effectiveTotalBeats), currentBeat=$_currentBeat, measure=$currentMeasure');
+            developer.log('[${Platform.operatingSystem.toUpperCase()}] Normal tick: totalBeats=$_totalBeats, currentBeat=$_currentBeat, measure=$currentMeasure (raw tick: $tick)');
           }
 
           // Check for loop end in Beat Mode (also needed in count-in method) - stop after first beat of next measure, wait 3s, then restart

@@ -799,3 +799,11 @@ lib/
   - Maintained volume setting for preview methods to ensure proper preview functionality
   - Fixed preview button not working by removing unnecessary enabled state check
   - Ensures consistent accent volume from first beat onwards across all playback modes
+- **Completely rewrote Android metronome timing fix with proper root cause analysis**:
+  - Discovered fundamental difference: Android metronome plays immediately on metronome.play(), iOS waits for first tick
+  - This creates a 1-beat offset where Android has an extra "tick 0" sound before tick events start
+  - Replaced complex -3 beat offset system with simple platform-specific tick counting
+  - Android: _totalBeats = tick + 1 (compensates for immediate sound), iOS: _totalBeats = tick
+  - Applied fix to both count-in and normal playback modes for consistent behavior
+  - Eliminates weird UI pattern (1,2,3,1,2,3,4) and aligns beat display with actual audio timing
+  - Enhanced logging to show raw tick numbers for debugging platform differences

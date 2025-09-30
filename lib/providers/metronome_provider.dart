@@ -184,7 +184,7 @@ class MetronomeProvider extends ChangeNotifier {
       return;
     }
 
-    pauseMetronome();
+    _cleanStopForRestart();
 
     final effectiveBPM = (_settings.bpm * _playbackRate).round();
 
@@ -229,7 +229,7 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   void _startWithCountIn() {
-    pauseMetronome();
+    _cleanStopForRestart();
 
     _isCountingIn = true;
     _isPlaying = true;
@@ -314,6 +314,22 @@ class MetronomeProvider extends ChangeNotifier {
     notifyListeners();
 
     developer.log('Metronome paused (beat counter preserved: $_totalBeats)');
+  }
+
+  void _cleanStopForRestart() {
+    // Stop metronome cleanly for restart without seeking to loop start
+    _metronome.pause();
+    _countInMetronome.pause();
+    _isPlaying = false;
+    _isPreviewing = false;
+    _isCountingIn = false;
+
+    // Important: Also stop the metronome internally to reset timing
+    _metronome.stop();
+
+    notifyListeners();
+
+    developer.log('Metronome cleanly stopped for restart (beat counter preserved: $_totalBeats)');
   }
 
   void stopMetronome() {

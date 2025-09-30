@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/rectangle_provider.dart';
 import '../providers/video_provider.dart';
 import '../providers/metronome_provider.dart';
+import '../providers/app_mode_provider.dart';
 import '../models/rectangle.dart';
 import '../models/metronome_settings.dart';
 
@@ -590,8 +591,8 @@ class SyncPointsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<RectangleProvider, MetronomeProvider>(
-      builder: (context, rectangleProvider, metronomeProvider, _) {
+    return Consumer3<RectangleProvider, MetronomeProvider, AppModeProvider>(
+      builder: (context, rectangleProvider, metronomeProvider, appModeProvider, _) {
         final selectedRectangle = rectangleProvider.selectedRectangle;
 
         if (selectedRectangle == null) {
@@ -599,6 +600,7 @@ class SyncPointsBar extends StatelessWidget {
         }
 
         final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
+        final isDesignMode = appModeProvider.isDesignMode;
 
         final hasSyncPoints = isBeatMode
             ? selectedRectangle.beatNumbers.isNotEmpty
@@ -625,18 +627,20 @@ class SyncPointsBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: () => _createSyncPoint(context, selectedRectangle),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Sync'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: const Size(0, 40),
+              if (isDesignMode) ...[
+                ElevatedButton.icon(
+                  onPressed: () => _createSyncPoint(context, selectedRectangle),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Sync'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: const Size(0, 40),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: !hasSyncPoints
                     ? const Center(
@@ -667,13 +671,17 @@ class SyncPointsBar extends StatelessWidget {
                               }
 
                               return GestureDetector(
-                                onLongPressStart: (details) => _showBeatSyncMenu(
+                                onTap: () {
+                                  // Seek to beat on tap
+                                  metronomeProvider.seekToBeat(beatNumber);
+                                },
+                                onLongPressStart: isDesignMode ? (details) => _showBeatSyncMenu(
                                   context,
                                   selectedRectangle,
                                   beatNumber,
                                   displayText,
                                   details.globalPosition,
-                                ),
+                                ) : null,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
@@ -703,12 +711,17 @@ class SyncPointsBar extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final timestamp = selectedRectangle.timestamps[index];
                               return GestureDetector(
-                                onLongPressStart: (details) => _showTimestampSyncMenu(
+                                onTap: () {
+                                  // Seek to timestamp on tap
+                                  final videoProvider = context.read<VideoProvider>();
+                                  videoProvider.seekTo(timestamp);
+                                },
+                                onLongPressStart: isDesignMode ? (details) => _showTimestampSyncMenu(
                                   context,
                                   selectedRectangle,
                                   timestamp,
                                   details.globalPosition,
-                                ),
+                                ) : null,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(

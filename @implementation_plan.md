@@ -731,3 +731,11 @@ lib/
   - Implemented three visual states: disabled (no loop), enabled but inactive, and active with blue highlighting
   - Loop buttons integrate seamlessly with BPM row controls without taking additional screen space
   - Enhanced user experience with immediate visual feedback and consistent behavior across both modes
+- **Refactored sync point badge display to sync bar only**:
+  - Removed timestamp and beat badges from inside rectangles to improve score readability
+  - Modified sync bar to show in both design and playback modes (previously design mode only)
+  - Enhanced sync bar to display badges when rectangle is selected with tap-to-seek functionality
+  - Implemented mode-aware long press: context menus only available in design mode for editing
+  - Cleaned up unused badge drawing methods from rectangle_painter.dart and rectangle_overlay.dart
+  - Simplified rectangle rendering to only show indicator dots for sync points instead of full badges
+  - Unified sync point interaction through dedicated sync bar interface for cleaner UI separation

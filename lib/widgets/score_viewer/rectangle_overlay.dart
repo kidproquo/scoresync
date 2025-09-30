@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:developer' as developer;
 import '../../models/rectangle.dart';
 import '../../providers/rectangle_provider.dart';
 import '../../providers/app_mode_provider.dart';
@@ -58,26 +57,9 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
       if (handle == RectangleHandle.delete && isDesignMode && rectangle.isSelected) {
         rectangleProvider.deleteSelectedRectangle();
         return;
-      } else if ((rectangle.hasTimestamps || rectangle.hasBeatNumbers) && (!isDesignMode || rectangle.isSelected)) {
-        // Only respond to badge taps if in playback mode OR if rectangle is selected in design mode
-        final metronomeProvider = context.read<MetronomeProvider>();
-        final isBeatMode = metronomeProvider.settings.mode == MetronomeMode.beat;
-
-        if (isBeatMode && rectangle.hasBeatNumbers) {
-          final tappedBeat = _getBeatNumberAtPoint(rectangle, localPoint, metronomeProvider);
-          if (tappedBeat != null) {
-            _handleBeatBadgeTap(tappedBeat, metronomeProvider);
-            return;
-          }
-        } else if (!isBeatMode && rectangle.hasTimestamps) {
-          final tappedTimestamp = _getTimestampAtPoint(rectangle, localPoint);
-          if (tappedTimestamp != null) {
-            _handleTimestampBadgeTap(tappedTimestamp);
-            return;
-          }
-        }
       }
-      
+      // Badge tap detection removed - badges now in sync bar only
+
       if (isDesignMode) {
         rectangleProvider.selectRectangle(rectangle);
         
@@ -130,158 +112,10 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
     }
   }
 
-  void _handleTimestampBadgeTap(Duration timestamp) {
-    final videoProvider = context.read<VideoProvider>();
-    final metronomeProvider = context.read<MetronomeProvider>();
 
-    if (videoProvider.hasVideo) {
-      developer.log('Timestamp badge tapped: seeking to ${_formatDuration(timestamp)}');
 
-      metronomeProvider.stopMetronome();
-      videoProvider.forcePause();
-      videoProvider.seekTo(timestamp);
-      Future.delayed(const Duration(milliseconds: 100), () {
-        videoProvider.forcePause();
-      });
 
-      developer.log('Video paused at ${_formatDuration(timestamp)} - press play to start with metronome');
-    }
-  }
 
-  void _handleBeatBadgeTap(int beatNumber, MetronomeProvider metronomeProvider) {
-    developer.log('Beat badge tapped: seeking to beat $beatNumber');
-
-    final beatsPerMeasure = metronomeProvider.settings.timeSignature.numerator;
-
-    // Calculate which measure this beat is in for logging
-    final measureNumber = beatNumber == 0 ? 0 : ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
-    final beatInMeasure = beatNumber == 0 ? 0 : ((beatNumber - 1) % beatsPerMeasure) + 1;
-
-    // Seek to the exact beat (one before, so when play starts it's on this beat)
-    metronomeProvider.seekToBeat(beatNumber);
-
-    if (metronomeProvider.isPlaying) {
-      metronomeProvider.stopMetronome();
-    }
-
-    developer.log('Metronome set to M$measureNumber:B$beatInMeasure (beat $beatNumber) - press play to start');
-  }
-
-  int? _getBeatNumberAtPoint(DrawnRectangle rectangle, Offset point, MetronomeProvider metronomeProvider) {
-    if (rectangle.beatNumbers.isEmpty) return null;
-
-    const badgeHeight = 16.0;
-    const badgePadding = 3.0;
-    const badgeSpacing = 4.0;
-
-    final beatsPerMeasure = metronomeProvider.settings.timeSignature.numerator;
-    final List<double> badgeWidths = [];
-    double totalWidth = 0;
-
-    for (final beatNumber in rectangle.beatNumbers) {
-      final String beatText;
-      if (beatNumber == 0) {
-        beatText = 'M0:B0';
-      } else {
-        final measureNumber = ((beatNumber - 1) ~/ beatsPerMeasure) + 1;
-        final beatInMeasure = ((beatNumber - 1) % beatsPerMeasure) + 1;
-        beatText = 'M$measureNumber:B$beatInMeasure';
-      }
-      final badgeWidth = beatText.length * 6.5 + badgePadding * 2;
-      badgeWidths.add(badgeWidth);
-      totalWidth += badgeWidth;
-    }
-
-    totalWidth += badgeSpacing * (rectangle.beatNumbers.length - 1);
-
-    final startX = rectangle.rect.center.dx - (totalWidth / 2);
-    final startY = rectangle.rect.center.dy - (badgeHeight / 2);
-
-    double currentX = startX;
-
-    for (int i = 0; i < rectangle.beatNumbers.length; i++) {
-      final beatNumber = rectangle.beatNumbers[i];
-      final badgeWidth = badgeWidths[i];
-
-      final badgeRect = Rect.fromLTWH(
-        currentX,
-        startY,
-        badgeWidth,
-        badgeHeight,
-      );
-
-      if (badgeRect.contains(point)) {
-        return beatNumber;
-      }
-
-      currentX += badgeWidth + badgeSpacing;
-    }
-
-    return null;
-  }
-
-  Duration? _getTimestampAtPoint(DrawnRectangle rectangle, Offset point) {
-    if (rectangle.timestamps.isEmpty) return null;
-
-    const badgeHeight = 16.0;
-    const badgePadding = 3.0;
-    const badgeSpacing = 4.0;
-
-    // First pass: calculate all badge widths and total width (same logic as painter)
-    final List<double> badgeWidths = [];
-    double totalWidth = 0;
-
-    for (final timestamp in rectangle.timestamps) {
-      final timeText = _formatDuration(timestamp);
-      // Estimate badge width
-      final badgeWidth = timeText.length * 6.5 + badgePadding * 2;
-      badgeWidths.add(badgeWidth);
-      totalWidth += badgeWidth;
-    }
-
-    // Add spacing between badges to total width
-    totalWidth += badgeSpacing * (rectangle.timestamps.length - 1);
-
-    // Calculate starting X position to center the row
-    final startX = rectangle.rect.center.dx - (totalWidth / 2);
-
-    // Calculate Y position to center vertically in the rectangle
-    final startY = rectangle.rect.center.dy - (badgeHeight / 2);
-
-    // Second pass: check which badge was tapped
-    double currentX = startX;
-
-    for (int i = 0; i < rectangle.timestamps.length; i++) {
-      final timestamp = rectangle.timestamps[i];
-      final badgeWidth = badgeWidths[i];
-
-      final badgeRect = Rect.fromLTWH(
-        currentX,
-        startY,
-        badgeWidth,
-        badgeHeight,
-      );
-
-      if (badgeRect.contains(point)) {
-        return timestamp;
-      }
-
-      currentX += badgeWidth + badgeSpacing;
-    }
-
-    return null;
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String minutes = twoDigits(duration.inMinutes.remainder(60));
-    String seconds = twoDigits(duration.inSeconds.remainder(60));
-    if (duration.inHours > 0) {
-      String hours = twoDigits(duration.inHours);
-      return '$hours:$minutes:$seconds';
-    }
-    return '$minutes:$seconds';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +173,6 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
           );
         },
       );
-    },
-  );
-}
+    });
+  }
 }

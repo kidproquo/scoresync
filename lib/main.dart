@@ -960,9 +960,8 @@ class _MainScreenState extends State<MainScreen> {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Sync points bar (only in design mode when rectangle selected)
-                    if (!isPlaybackMode)
-                      const SyncPointsBar(),
+                    // Sync points bar (shown in both design and playback modes when rectangle selected)
+                    const SyncPointsBar(),
                     // Page controls
                     Container(
                       decoration: BoxDecoration(

@@ -265,8 +265,8 @@ class MetronomeProvider extends ChangeNotifier {
           // Exit count-in mode now - this tick IS the first beat of main playback
           _isCountingIn = false;
 
-          // If we're in a loop, don't increment beyond the current position
-          // The count-in was for the current loop start beat
+          // Increment total beats as we're now on the first beat after count-in
+          _totalBeats++;
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
           developer.log('Exited count-in, starting normal playback on beat $_currentBeat (total beats: $_totalBeats)');

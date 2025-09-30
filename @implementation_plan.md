@@ -744,3 +744,20 @@ lib/
   - Loop now triggers after the final beat is fully played rather than cutting off mid-beat
   - Applied timing fix to both main tick handler and count-in completion handler
   - Provides more natural musical phrasing and measure completion in beat mode loops
+- **Fixed comprehensive loop state management issues**:
+  - Corrected loop UI state when removing sync points to prevent orphaned rectangle highlighting
+  - Fixed MetronomeProvider to clear rectangle IDs when clearing loop points using clearLoopRectangleIds flag
+  - Modified sync point deletion to only clear loops when removing the specific point used by the loop
+  - For video mode: clear loop only when deleting the exact timestamp; for beat mode: clear when rectangle becomes empty
+- **Implemented proper pause/stop behavior during loops**:
+  - Added pauseMetronome() method that preserves beat position without seeking to loop start
+  - Separated pause behavior from stop behavior for intuitive loop handling
+  - Updated play/pause toggles in both beat and video modes to use pauseMetronome()
+  - Stop buttons now properly seek to loop start when loop is active, or beginning when not looping
+  - Pause preserves position for seamless resume, stop resets to appropriate starting point
+- **Fixed beat synchronization and count-in timing issues**:
+  - Created _cleanStopForRestart() method that properly resets metronome timing without seeking to loop
+  - Calls metronome.stop() to reset internal timing state and prevent accumulated drift
+  - Fixed off-by-1 beat counting issue in count-in exit logic by incrementing _totalBeats on transition
+  - Resume behavior now correctly starts from beat 1 of paused measure in both loop and non-loop modes
+  - Eliminated timing drift and synchronization issues during pause/resume transitions

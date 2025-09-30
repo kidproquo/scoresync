@@ -1,0 +1,16 @@
+diff --git a/android/src/main/java/com/sumsg/metronome/Metronome.java b/android/src/main/java/com/sumsg/metronome/Metronome.java
+index original..patched 100644
+--- a/android/src/main/java/com/sumsg/metronome/Metronome.java
++++ b/android/src/main/java/com/sumsg/metronome/Metronome.java
+@@ -67,6 +67,10 @@ public class Metronome {
+     public void play() {
+         if (!isPlaying()) {
+             updated = true;
+             onTick();
++            // Send immediate tick event to match iOS behavior
++            if (eventTickSink != null) {
++                eventTickSink.success(0);  // Send tick 0 immediately
++            }
+             audioTrack.play();
+             startMetronome();
+         }

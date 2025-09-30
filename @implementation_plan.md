@@ -807,3 +807,15 @@ lib/
   - Applied fix to both count-in and normal playback modes for consistent behavior
   - Eliminates weird UI pattern (1,2,3,1,2,3,4) and aligns beat display with actual audio timing
   - Enhanced logging to show raw tick numbers for debugging platform differences
+- **Created upstream fix for metronome plugin Android timing issue**:
+  - Analyzed metronome plugin source code to identify root cause in Android native implementation
+  - Found issue in Metronome.java play() method: audio starts immediately but tick events come later
+  - Created plugin patch that sends immediate tick 0 event to match iOS behavior
+  - Modified local plugin copy to test fix: added eventTickSink.success(0) in play() method
+  - Updated Flutter code to use unified tick counting for both platforms (removed platform-specific logic)
+  - Created comprehensive patch package with documentation, script, and diff file for upstream contribution
+- **Fixed video overlay control row overflow issues**:
+  - Resolved RenderFlex overflow when loop button displays long text like "01:30-02:45"
+  - Replaced conditional horizontal scrolling with always-enabled scrolling for video overlays
+  - Applied fix to both design mode and playback mode video control rows
+  - Ensures video overlay controls are horizontally scrollable when they don't fit container width

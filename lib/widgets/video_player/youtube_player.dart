@@ -824,16 +824,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final controls = _buildDesignControls();
-                            // Use SingleChildScrollView for narrow containers
-                            final isVeryNarrow = constraints.maxWidth <= 320;
-                            if (isVeryNarrow) {
-                              return SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(children: controls),
-                              );
-                            } else {
-                              return Row(children: controls);
-                            }
+                            // Always use SingleChildScrollView for video overlay to prevent overflow
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(children: controls),
+                            );
                           },
                         ),
                         // Bottom row - progress bar and time
@@ -904,16 +899,11 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final controls = _buildPlaybackControls();
-                            // Use SingleChildScrollView for narrow containers
-                            final isVeryNarrow = constraints.maxWidth <= 320;
-                            if (isVeryNarrow) {
-                              return SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(children: controls),
-                              );
-                            } else {
-                              return Row(children: controls);
-                            }
+                            // Always use SingleChildScrollView for video overlay to prevent overflow
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(children: controls),
+                            );
                           },
                         ),
                         // Bottom row - progress bar and time

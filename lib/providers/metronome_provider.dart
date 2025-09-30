@@ -212,8 +212,8 @@ class MetronomeProvider extends ChangeNotifier {
       (int tick) {
         developer.log('[${Platform.operatingSystem.toUpperCase()}] Raw tick received: $tick, _isCountingIn: $_isCountingIn');
         if (!_isCountingIn) {
-          // On Android, metronome plays immediately when started, so tick events are offset by 1
-          _totalBeats = Platform.isAndroid ? tick + 1 : tick;
+          // With the plugin fix, both platforms should start with tick 0 at the first sound
+          _totalBeats = tick + 1;
 
           final effectiveTotalBeats = _totalBeats;
 
@@ -294,9 +294,8 @@ class MetronomeProvider extends ChangeNotifier {
       (int tick) {
         developer.log('[${Platform.operatingSystem.toUpperCase()}] Count-in raw tick: $tick, _isCountingIn: $_isCountingIn, countInComplete: $countInComplete');
         if (_isCountingIn && !countInComplete) {
-          // On Android, the first sound plays immediately when metronome.play() is called
-          // So tick 1 is actually the second beat we hear
-          countInBeatsPlayed = Platform.isAndroid ? tick + 1 : tick;
+          // With the plugin fix, both platforms send tick 0 immediately when play() is called
+          countInBeatsPlayed = tick + 1;
           _currentBeat = countInBeatsPlayed;
           notifyListeners();
           developer.log('[${Platform.operatingSystem.toUpperCase()}] Count-in beat: $countInBeatsPlayed/$beatsPerMeasure (raw tick: $tick)');
@@ -310,15 +309,15 @@ class MetronomeProvider extends ChangeNotifier {
           // Exit count-in mode now - this tick IS the first beat of main playback
           _isCountingIn = false;
 
-          // On Android, this is the first tick after count-in, so apply offset
-          _totalBeats = Platform.isAndroid ? tick + 1 : tick;
+          // With the plugin fix, both platforms use the same tick numbering
+          _totalBeats = tick + 1;
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
           developer.log('[${Platform.operatingSystem.toUpperCase()}] Exited count-in, starting normal playback on beat $_currentBeat (total beats: $_totalBeats, raw tick: $tick)');
           notifyListeners();
         } else {
-          // Normal playback - increment total beats and calculate current beat
-          _totalBeats = Platform.isAndroid ? tick + 1 : tick;
+          // Normal playback - with plugin fix, both platforms use same numbering
+          _totalBeats = tick + 1;
           _currentBeat = ((_totalBeats - 1) % _settings.timeSignature.numerator) + 1;
           _onBeat?.call(_totalBeats);
           // Only log every beat or first few beats to avoid spam

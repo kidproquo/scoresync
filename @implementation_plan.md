@@ -784,3 +784,11 @@ lib/
   - Uses existing beat sync infrastructure to determine correct page for loop start beat
   - Only changes pages when loop start is on different page than currently displayed
   - Provides seamless user experience with visual preparation during pause before restart
+- **Fixed Android-specific metronome accent timing issue**:
+  - Identified Android metronome plugin playing accent on beat 4 instead of beat 1 in 4/4 time
+  - Implemented platform-specific beat offset compensation for Android devices
+  - Added Platform.isAndroid detection with -3 beat offset to align visual beats with audio accent
+  - Applied offset to both normal playback and count-in modes for consistent behavior
+  - Enhanced logging to show both raw and effective beat counts for debugging
+  - Updated totalBeats and currentMeasure getters to return corrected values on Android
+  - Ensures sync points activate at correct audio timing rather than visual beat numbers

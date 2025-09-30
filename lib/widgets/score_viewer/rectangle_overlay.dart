@@ -72,10 +72,14 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
           rectangleProvider.startMoving(localPoint);
         }
       }
-    } else if (isDesignMode) {
-      // Start drawing new rectangle
+    } else {
+      // Tapping outside rectangles - always deselect to hide sync bar
       rectangleProvider.selectRectangle(null);
-      rectangleProvider.startDrawing(localPoint, widget.currentPageNumber);
+
+      if (isDesignMode) {
+        // Start drawing new rectangle in design mode
+        rectangleProvider.startDrawing(localPoint, widget.currentPageNumber);
+      }
     }
   }
 

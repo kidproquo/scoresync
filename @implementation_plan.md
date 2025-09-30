@@ -766,3 +766,9 @@ lib/
   - Rectangle manipulation (moving, resizing) remains restricted to design mode only
   - Users can now tap rectangles in playback mode to view and interact with sync point badges
   - Improved UX by making sync points accessible during actual practice sessions
+- **Enhanced rectangle highlighting and deselection behavior**:
+  - Implemented consistent yellow highlighting for all selected rectangles regardless of type
+  - Non-selected rectangles use type-based colors (green for loop start, red for loop end, original for others)
+  - Added deselection when tapping outside rectangles in both design and playback modes
+  - Implemented automatic deselection when switching between design and playback modes
+  - Cleaner UI with intuitive selection feedback and proper state management across mode transitions

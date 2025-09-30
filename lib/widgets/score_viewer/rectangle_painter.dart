@@ -59,14 +59,8 @@ class RectanglePainter extends CustomPainter {
 
     // In playback mode, active rectangles have no border, just fill
     if (isActive && !isDesignMode) {
+      // Always use yellow for highlighted/active rectangles
       Color fillColor = Colors.yellow.withAlpha(80);
-
-      // Override color for loop markers
-      if (isLoopStart) {
-        fillColor = Colors.green.withAlpha(100);
-      } else if (isLoopEnd) {
-        fillColor = Colors.red.withAlpha(100);
-      }
 
       final fillPaint = Paint()
         ..color = fillColor
@@ -75,14 +69,16 @@ class RectanglePainter extends CustomPainter {
     } else {
       // Draw border for non-active rectangles or design mode
       Color borderColor = rectangle.isSelected
-          ? rectangle.color.withAlpha(255)
+          ? Colors.yellow  // Use yellow for selected rectangles
           : rectangle.color.withAlpha(180);
 
-      // Override color for loop markers
-      if (isLoopStart) {
-        borderColor = Colors.green;
-      } else if (isLoopEnd) {
-        borderColor = Colors.red;
+      // Override with type-based colors only for non-selected rectangles
+      if (!rectangle.isSelected) {
+        if (isLoopStart) {
+          borderColor = Colors.green;
+        } else if (isLoopEnd) {
+          borderColor = Colors.red;
+        }
       }
 
       final paint = Paint()
@@ -96,12 +92,18 @@ class RectanglePainter extends CustomPainter {
 
       // Draw fill for selected rectangles in design mode or loop markers
       if (rectangle.isSelected || isLoopStart || isLoopEnd) {
-        Color fillColor = rectangle.color.withAlpha(30);
+        Color fillColor;
 
-        if (isLoopStart) {
+        if (rectangle.isSelected) {
+          // Always use yellow for selected rectangles
+          fillColor = Colors.yellow.withAlpha(30);
+        } else if (isLoopStart) {
+          // Use type-based colors only for non-selected loop markers
           fillColor = Colors.green.withAlpha(50);
         } else if (isLoopEnd) {
           fillColor = Colors.red.withAlpha(50);
+        } else {
+          fillColor = rectangle.color.withAlpha(30);
         }
 
         final fillPaint = Paint()

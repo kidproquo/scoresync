@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_mode_provider.dart';
+import '../providers/rectangle_provider.dart';
 import '../models/app_mode.dart';
 
 class ModeSwitcher extends StatelessWidget {
@@ -8,8 +9,8 @@ class ModeSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppModeProvider>(
-      builder: (context, appModeProvider, child) {
+    return Consumer2<AppModeProvider, RectangleProvider>(
+      builder: (context, appModeProvider, rectangleProvider, child) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Container(
@@ -28,14 +29,20 @@ class ModeSwitcher extends StatelessWidget {
                   AppMode.design,
                   Icons.edit,
                   appModeProvider.isDesignMode,
-                  () => appModeProvider.setDesignMode(),
+                  () {
+                    rectangleProvider.selectRectangle(null);  // Deselect on mode switch
+                    appModeProvider.setDesignMode();
+                  },
                 ),
                 _buildModeButton(
                   context,
                   AppMode.playback,
                   Icons.play_arrow,
                   appModeProvider.isPlaybackMode,
-                  () => appModeProvider.setPlaybackMode(),
+                  () {
+                    rectangleProvider.selectRectangle(null);  // Deselect on mode switch
+                    appModeProvider.setPlaybackMode();
+                  },
                 ),
               ],
             ),

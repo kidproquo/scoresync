@@ -18,6 +18,7 @@ class MetronomeProvider extends ChangeNotifier {
   StreamSubscription<int>? _tickSubscription;
   int _totalBeats = 0;
   Function(int beat)? _onBeat;
+  Function(int beat)? _onLoopPageCheck;
 
   // Callbacks (only used during count-in)
   Function(int beat)? _onCountInBeat;
@@ -210,6 +211,11 @@ class MetronomeProvider extends ChangeNotifier {
             // Stop the metronome
             pauseMetronome();
 
+            // Check if we need to change pages for loop start
+            if (_settings.loopStartBeat != null) {
+              _onLoopPageCheck?.call(_settings.loopStartBeat!);
+            }
+
             // Wait 3 seconds, then restart from loop start
             Future.delayed(const Duration(seconds: 3), () {
               if (_settings.isLoopActive && _settings.loopStartBeat != null) {
@@ -297,6 +303,11 @@ class MetronomeProvider extends ChangeNotifier {
 
             // Stop the metronome
             pauseMetronome();
+
+            // Check if we need to change pages for loop start
+            if (_settings.loopStartBeat != null) {
+              _onLoopPageCheck?.call(_settings.loopStartBeat!);
+            }
 
             // Wait 3 seconds, then restart from loop start
             Future.delayed(const Duration(seconds: 3), () {
@@ -471,6 +482,10 @@ class MetronomeProvider extends ChangeNotifier {
 
   void setOnBeatCallback(Function(int)? callback) {
     _onBeat = callback;
+  }
+
+  void setOnLoopPageCheckCallback(Function(int)? callback) {
+    _onLoopPageCheck = callback;
   }
 
   void seekToMeasure(int measureNumber) {

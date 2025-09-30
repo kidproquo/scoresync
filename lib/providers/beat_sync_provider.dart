@@ -32,6 +32,7 @@ class BeatSyncProvider extends ChangeNotifier {
     _appModeProvider = appModeProvider;
 
     _metronomeProvider!.setOnBeatCallback(_onBeatChanged);
+    _metronomeProvider!.setOnLoopPageCheckCallback(_onLoopPageCheck);
 
     _rectangleProvider!.addListener(_rebuildSyncPoints);
 
@@ -43,6 +44,7 @@ class BeatSyncProvider extends ChangeNotifier {
   @override
   void dispose() {
     _metronomeProvider?.setOnBeatCallback(null);
+    _metronomeProvider?.setOnLoopPageCheckCallback(null);
     _rectangleProvider?.removeListener(_rebuildSyncPoints);
     _appModeProvider?.removeListener(_onAppModeChanged);
     super.dispose();
@@ -119,6 +121,18 @@ class BeatSyncProvider extends ChangeNotifier {
       }
 
       notifyListeners();
+    }
+  }
+
+  void _onLoopPageCheck(int loopStartBeat) {
+    // Check if loop start beat is on a different page and navigate if needed
+    final loopSyncPoint = _beatTree.findActiveAt(loopStartBeat);
+
+    if (loopSyncPoint != null && _scoreProvider != null) {
+      if (_scoreProvider!.currentPageNumber != loopSyncPoint.pageNumber) {
+        developer.log('📄 Loop restart: changing to page ${loopSyncPoint.pageNumber} for beat $loopStartBeat');
+        _scoreProvider!.goToPage(loopSyncPoint.pageNumber);
+      }
     }
   }
 

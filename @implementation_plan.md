@@ -778,3 +778,9 @@ lib/
   - Fixed beat synchronization issues during loop restart to prevent off-by-1 counting errors
   - Manual beat positioning ensures first beat after pause lands exactly on loop start beat
   - Applied consistent timing behavior to both normal and count-in loop restart scenarios
+- **Added automatic page navigation for loop restarts**:
+  - Implemented callback system between MetronomeProvider and BeatSyncProvider for page coordination
+  - Automatically navigates to loop start page immediately when loop end is reached, before 3-second pause
+  - Uses existing beat sync infrastructure to determine correct page for loop start beat
+  - Only changes pages when loop start is on different page than currently displayed
+  - Provides seamless user experience with visual preparation during pause before restart

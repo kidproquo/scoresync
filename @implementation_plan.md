@@ -761,3 +761,8 @@ lib/
   - Fixed off-by-1 beat counting issue in count-in exit logic by incrementing _totalBeats on transition
   - Resume behavior now correctly starts from beat 1 of paused measure in both loop and non-loop modes
   - Eliminated timing drift and synchronization issues during pause/resume transitions
+- **Fixed sync bar visibility in playback mode**:
+  - Enabled rectangle selection in both design and playback modes for sync bar access
+  - Rectangle manipulation (moving, resizing) remains restricted to design mode only
+  - Users can now tap rectangles in playback mode to view and interact with sync point badges
+  - Improved UX by making sync points accessible during actual practice sessions

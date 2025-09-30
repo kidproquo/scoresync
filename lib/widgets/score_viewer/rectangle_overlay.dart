@@ -60,9 +60,10 @@ class _InteractiveRectangleOverlayState extends State<InteractiveRectangleOverla
       }
       // Badge tap detection removed - badges now in sync bar only
 
+      // Always allow rectangle selection in both modes for sync bar display
+      rectangleProvider.selectRectangle(rectangle);
+
       if (isDesignMode) {
-        rectangleProvider.selectRectangle(rectangle);
-        
         if (handle != null && handle != RectangleHandle.delete) {
           // Start resizing for resize handles
           rectangleProvider.startResizing(localPoint, handle);

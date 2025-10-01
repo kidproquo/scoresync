@@ -267,7 +267,7 @@ class MetronomeSettingsData {
       countInEnabled: metronomeSettings.countInEnabled,
       volume: metronomeSettings.volume,
       enabled: metronomeSettings.isEnabled,
-      mode: metronomeSettings.mode.name,
+      mode: MetronomeModeHelper.toName(metronomeSettings.mode),
       loopStartBeat: metronomeSettings.loopStartBeat,
       loopEndBeat: metronomeSettings.loopEndBeat,
       isLoopActive: metronomeSettings.isLoopActive,

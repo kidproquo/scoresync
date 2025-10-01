@@ -1,5 +1,27 @@
 enum MetronomeMode { video, beat }
 
+class MetronomeModeHelper {
+  static String toName(MetronomeMode mode) {
+    switch (mode) {
+      case MetronomeMode.video:
+        return 'video';
+      case MetronomeMode.beat:
+        return 'beat';
+    }
+  }
+
+  static MetronomeMode fromString(String value) {
+    switch (value) {
+      case 'video':
+        return MetronomeMode.video;
+      case 'beat':
+        return MetronomeMode.beat;
+      default:
+        return MetronomeMode.video; // Default fallback
+    }
+  }
+}
+
 class MetronomeSettings {
   final bool isEnabled;
   final int bpm;
@@ -67,7 +89,7 @@ class MetronomeSettings {
       'timeSignature': timeSignature.toJson(),
       'countInEnabled': countInEnabled,
       'volume': volume,
-      'mode': mode.name,
+      'mode': MetronomeModeHelper.toName(mode),
       'loopStartBeat': loopStartBeat,
       'loopEndBeat': loopEndBeat,
       'isLoopActive': isLoopActive,
@@ -80,7 +102,7 @@ class MetronomeSettings {
     MetronomeMode mode = MetronomeMode.video;
     if (json['mode'] != null) {
       try {
-        mode = MetronomeMode.values.byName(json['mode']);
+        mode = MetronomeModeHelper.fromString(json['mode']);
       } catch (e) {
         mode = MetronomeMode.video;
       }

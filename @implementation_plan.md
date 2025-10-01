@@ -829,3 +829,10 @@ lib/
   - Created _resumeFromBeat system to preserve resume position through count-in sequences
   - Ensured measure counters (_totalBeats and _absoluteBeatCount) stay synchronized across all operations
   - Fixed count-in exit logic to properly increment from saved resume position rather than always starting at beat 1
+- **Fixed enum serialization error in song archives**:
+  - Resolved NoSuchMethodError for MetronomeMode.name getter not available in older Dart versions
+  - Created MetronomeModeHelper class with static methods toName() and fromString() for enum conversion
+  - Updated all MetronomeMode serialization to use helper methods instead of .name property
+  - Fixed both metronome_settings.dart and song_archive.dart to use the new helper class
+  - Ensured backward compatibility with proper fallback to video mode for unknown values
+  - Verified import logic properly handles Beat mode, loop settings, and beat sync points

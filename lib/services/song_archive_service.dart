@@ -52,8 +52,11 @@ class SongArchiveService {
         final pdfFile = File(absolutePdfPath);
         if (await pdfFile.exists()) {
           final pdfBytes = await pdfFile.readAsBytes();
-          final pdfArchiveFile = ArchiveFile('score.pdf', pdfBytes.length, pdfBytes);
+          // Preserve the original filename from the path
+          final pdfFileName = path.basename(absolutePdfPath);
+          final pdfArchiveFile = ArchiveFile(pdfFileName, pdfBytes.length, pdfBytes);
           archive.addFile(pdfArchiveFile);
+          developer.log('Added PDF to archive with filename: $pdfFileName');
         } else {
           developer.log('Warning: PDF file not found at $absolutePdfPath');
           throw Exception('PDF file not found. Cannot create archive without score.');
@@ -111,27 +114,26 @@ class SongArchiveService {
       // Extract files and validate structure
       ArchiveFile? metadataFile;
       ArchiveFile? scoreFile;
+      String? scoreFileName;
       ArchiveFile? manifestFile;
 
       for (final file in archive) {
         if (file.isFile) {
-          switch (file.name) {
-            case 'metadata.json':
-              metadataFile = file;
-              break;
-            case 'score.pdf':
-              scoreFile = file;
-              break;
-            case 'manifest.json':
-              manifestFile = file;
-              break;
+          if (file.name == 'metadata.json') {
+            metadataFile = file;
+          } else if (file.name == 'manifest.json') {
+            manifestFile = file;
+          } else if (file.name.toLowerCase().endsWith('.pdf')) {
+            // Accept any PDF file in the archive
+            scoreFile = file;
+            scoreFileName = file.name;
           }
         }
       }
 
       // Validate required files
       if (metadataFile == null || scoreFile == null) {
-        throw Exception('Invalid archive: missing required files (metadata.json or score.pdf)');
+        throw Exception('Invalid archive: missing required files (metadata.json or PDF file)');
       }
 
       // Log manifest info if present
@@ -162,8 +164,9 @@ class SongArchiveService {
       final finalSongDir = Directory('${songsDir.path}/$finalSongName');
       await finalSongDir.create(recursive: true);
 
-      // Save PDF file
-      final pdfPath = '${finalSongDir.path}/score.pdf';
+      // Save PDF file with original or default name
+      final pdfFileName = scoreFileName ?? 'score.pdf';
+      final pdfPath = '${finalSongDir.path}/$pdfFileName';
       final pdfFile = File(pdfPath);
       await pdfFile.writeAsBytes(scoreFile.content as List<int>);
 

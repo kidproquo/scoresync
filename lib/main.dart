@@ -7,7 +7,9 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:http/http.dart' as http;
 import 'services/song_archive_service.dart';
+import 'services/measure_detection_service.dart';
 import 'widgets/score_viewer/score_viewer.dart';
 import 'widgets/video_player/youtube_player.dart';
 import 'providers/app_mode_provider.dart';
@@ -167,15 +169,11 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
 
 
   void _handleSharedFiles(List<SharedMediaFile> files) {
-    // Filter for PDF and ZIP files
-    final pdfFiles = files.where((file) =>
-      file.path.toLowerCase().endsWith('.pdf')).toList();
-
+    // Filter for ZIP files only (Symph archives)
     final zipFiles = files.where((file) =>
       file.path.toLowerCase().endsWith('.zip') ||
       file.path.toLowerCase().endsWith('.symph')).toList();
 
-    // Prioritize Symph archives over PDF files
     if (zipFiles.isNotEmpty) {
       final sharedZip = zipFiles.first;
       developer.log('Handling shared Symph archive: ${sharedZip.path}');
@@ -186,175 +184,11 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
           _showSharedArchiveDialog(File(sharedZip.path));
         }
       });
-    } else if (pdfFiles.isNotEmpty) {
-      // Handle the first PDF file
-      final sharedPdf = pdfFiles.first;
-      developer.log('Handling shared PDF: ${sharedPdf.path}');
-
-      // Wait for app initialization to complete before showing dialog
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _showSharedPdfDialog(File(sharedPdf.path));
-        }
-      });
     } else {
-      developer.log('No PDF or ZIP files found in shared files');
+      developer.log('No Symph archive files found in shared files');
     }
   }
 
-  void _showSharedPdfDialog(File pdfFile) {
-    final songProvider = context.read<SongProvider>();
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Shared PDF'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('A PDF file has been shared with Symph:'),
-              const SizedBox(height: 8),
-              Text(
-                pdfFile.path.split('/').last,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              const Text('What would you like to do?'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Clear the shared intent
-                ReceiveSharingIntent.instance.reset();
-              },
-              child: const Text('Cancel'),
-            ),
-            if (songProvider.hasSongs) ...[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _showUpdateExistingSongDialog(pdfFile);
-                },
-                child: const Text('Update Existing Song'),
-              ),
-            ],
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _createNewSongFromSharedPdf(pdfFile);
-              },
-              child: const Text('Create New Song'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showUpdateExistingSongDialog(File pdfFile) {
-    final songProvider = context.read<SongProvider>();
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Select Song to Update'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: songProvider.songs.length,
-              itemBuilder: (context, index) {
-                final song = songProvider.songs[index];
-                return ListTile(
-                  title: Text(song.name),
-                  subtitle: song.pdfPath != null 
-                      ? Text('Current PDF: ${song.pdfPath!.split('/').last}')
-                      : const Text('No PDF currently'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _updateExistingSongWithPdf(song.name, pdfFile);
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Clear the shared intent
-                ReceiveSharingIntent.instance.reset();
-              },
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _createNewSongFromSharedPdf(File pdfFile) async {
-    try {
-      final songProvider = context.read<SongProvider>();
-      await songProvider.createSongFromPdf(pdfFile);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Created new song from ${pdfFile.path.split('/').last}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-      
-      // Clear the shared intent
-      ReceiveSharingIntent.instance.reset();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating song: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _updateExistingSongWithPdf(String songName, File pdfFile) async {
-    try {
-      final songProvider = context.read<SongProvider>();
-      await songProvider.loadSong(songName);
-      await songProvider.updateSongPdf(pdfFile);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Updated $songName with new PDF'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-      
-      // Clear the shared intent
-      ReceiveSharingIntent.instance.reset();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating song: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   void _showSharedArchiveDialog(File archiveFile) {
     showDialog(
@@ -367,7 +201,7 @@ class _ScoreSyncHomeState extends State<ScoreSyncHome> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('A Symph song archive has been shared with you:'),
+              const Text('A Symph song archive has been shared with you:'),
               const SizedBox(height: 8),
               Text(
                 archiveFile.path.split('/').last,
@@ -984,6 +818,8 @@ class _MainScreenState extends State<MainScreen> {
                         onSelectPdf: () => _pickPdfFile(context),
                         canSelectPdf: songProvider.currentSong != null,
                         isDesignMode: !isPlaybackMode,
+                        onAutoDetectMeasures: !isPlaybackMode ? () => _handleAutoDetect(context) : null,
+                        hasPdf: scoreProvider.selectedPdfFile != null,
                       ),
                     ),
                   ],
@@ -1013,6 +849,285 @@ class _MainScreenState extends State<MainScreen> {
         );
       },
     );
+  }
+
+  Future<void> _handleAutoDetect(BuildContext context) async {
+    final scoreProvider = context.read<ScoreProvider>();
+    final rectangleProvider = context.read<RectangleProvider>();
+
+    if (scoreProvider.selectedPdfFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No PDF selected. Please select a PDF first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Check if there are existing rectangles
+    final hasExistingRectangles = rectangleProvider.allRectangles.isNotEmpty;
+
+    // Show confirmation dialog with replace option if rectangles exist
+    bool? shouldReplace = false;
+
+    if (hasExistingRectangles) {
+      // Show dialog with replace option
+      final result = await showDialog<Map<String, bool>>(
+        context: context,
+        builder: (context) {
+          bool replaceSelected = false;
+          return StatefulBuilder(
+            builder: (context, setState) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: Colors.purple),
+                  SizedBox(width: 12),
+                  Text('Auto-Detect Measures'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This will automatically detect and create rectangles for all measures in your score.',
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'You have existing rectangles and sync points.',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    title: const Text('Replace existing rectangles'),
+                    subtitle: const Text('This will delete all current rectangles and their sync points'),
+                    value: replaceSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        replaceSelected = value ?? false;
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'This may take a few moments depending on the size of your PDF.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop({
+                    'confirmed': true,
+                    'replace': replaceSelected,
+                  }),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Detect Measures'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (result == null || result['confirmed'] != true) return;
+      shouldReplace = result['replace'] ?? false;
+    } else {
+      // No existing rectangles, show simple confirmation
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.purple),
+              SizedBox(width: 12),
+              Text('Auto-Detect Measures'),
+            ],
+          ),
+          content: const Text(
+            'This will automatically detect and create rectangles for all measures in your score.\n\n'
+            'This may take a few moments depending on the size of your PDF.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Detect Measures'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+    }
+
+    // Show loading dialog with cancel button
+    if (!context.mounted) return;
+
+    // Create a cancellable HTTP client
+    final httpClient = http.Client();
+    bool isCancelled = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.purple),
+            const SizedBox(height: 24),
+            const Text(
+              'Detecting measures...',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This may take a few moments',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              isCancelled = true;
+              httpClient.close(); // Cancel the HTTP request
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Measure detection cancelled'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    try {
+      // Call detection API with cancellable client
+      final result = await MeasureDetectionService.detectMeasures(
+        scoreProvider.selectedPdfFile!,
+        client: httpClient,
+      );
+
+      if (!context.mounted) return;
+
+      // Check if the operation was cancelled
+      if (isCancelled) {
+        developer.log('Measure detection cancelled by user');
+        return;
+      }
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (result != null && result.success) {
+        // Clear existing rectangles if replace option was selected
+        if (shouldReplace) {
+          developer.log('Clearing existing rectangles before auto-detection');
+          rectangleProvider.clearAllRectangles();
+          // Sync points are automatically cleared when rectangles are cleared
+          // because SyncProvider rebuilds its tree based on rectangles
+        }
+
+        // Get page sizes from score provider (using the stored PDF page size)
+        final pageSizes = <int, Size>{};
+        for (int i = 1; i <= scoreProvider.totalPages; i++) {
+          // Use the same page size for all pages (from the first page)
+          pageSizes[i] = const Size(612, 792); // Default size - we'll update this to get actual sizes
+        }
+
+        // For now, we'll use a simplified approach and assume all pages have the same size
+        // In a full implementation, we would get each page's actual size
+        final pdfPageSize = Size(612, 792); // Default PDF page size
+        for (int i = 1; i <= scoreProvider.totalPages; i++) {
+          pageSizes[i] = pdfPageSize;
+        }
+
+        // Create rectangles
+        rectangleProvider.createRectanglesFromDetection(result, pageSizes);
+
+        // Show success message
+        final measureCount = result.pages.fold(0, (sum, page) => sum + page.systemMeasures.length);
+        if (context.mounted) {
+          final message = shouldReplace
+              ? 'Replaced existing rectangles with $measureCount detected measures across ${result.totalPages} pages'
+              : 'Successfully detected $measureCount measures across ${result.totalPages} pages';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Detection failed or returned no results');
+      }
+    } catch (e) {
+      // Ensure client is closed
+      httpClient.close();
+
+      if (!context.mounted) return;
+
+      // Check if the operation was cancelled
+      if (isCancelled) {
+        developer.log('Measure detection cancelled by user during error handling');
+        return;
+      }
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 12),
+              Text('Detection Failed'),
+            ],
+          ),
+          content: Text(_getErrorMessage(e)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    if (error is SocketException) {
+      return 'Unable to connect to detection service. Please check your internet connection.';
+    } else if (error.toString().contains('too large')) {
+      return error.toString();
+    } else {
+      return 'An error occurred during measure detection. Please try again or create rectangles manually.';
+    }
   }
 
   Widget _buildFloatingMenu(BuildContext context) {

@@ -67,6 +67,9 @@ dependencies:
   # Date formatting for archive timestamps
   intl: ^0.19.0
 
+  # HTTP client for API requests
+  http: ^1.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

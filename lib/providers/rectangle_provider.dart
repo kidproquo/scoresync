@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
+import 'dart:math';
 import '../models/rectangle.dart';
+import '../models/measure_detection.dart';
 
 class RectangleProvider extends ChangeNotifier {
   final Map<int, List<DrawnRectangle>> _rectanglesByPage = {};
@@ -328,21 +330,72 @@ class RectangleProvider extends ChangeNotifier {
   void updateRectangle(DrawnRectangle updatedRectangle) {
     final pageNumber = updatedRectangle.pageNumber;
     final pageRectangles = _rectanglesByPage[pageNumber];
-    
+
     if (pageRectangles != null) {
       final index = pageRectangles.indexWhere((r) => r.id == updatedRectangle.id);
       if (index != -1) {
         pageRectangles[index] = updatedRectangle;
-        
+
         // Update selected rectangle if it's the same one
         if (_selectedRectangle?.id == updatedRectangle.id) {
           _selectedRectangle = updatedRectangle;
         }
-        
+
         _notifyRectanglesChanged();
         developer.log('Updated rectangle: ${updatedRectangle.id}');
         notifyListeners();
       }
     }
+  }
+
+  // Batch create rectangles from measure detection results
+  void createRectanglesFromDetection(
+    MeasureDetectionResult detection,
+    Map<int, Size> pdfPageSizes,
+  ) {
+    final newRectangles = <DrawnRectangle>[];
+    final random = Random();
+
+    for (final page in detection.pages) {
+      final pdfPageSize = pdfPageSizes[page.pageNumber];
+      if (pdfPageSize == null) {
+        developer.log('Warning: No PDF page size for page ${page.pageNumber}');
+        continue;
+      }
+
+      // Calculate scale factors
+      final scaleX = pdfPageSize.width / page.width;
+      final scaleY = pdfPageSize.height / page.height;
+
+      developer.log('Page ${page.pageNumber}: API size ${page.width}x${page.height}, PDF size ${pdfPageSize.width}x$pdfPageSize.height, scale ${scaleX}x$scaleY');
+
+      // Create rectangle for each detected measure
+      for (final measure in page.systemMeasures) {
+        final rect = measure.toRect(scaleX, scaleY);
+
+        final rectangle = DrawnRectangle(
+          id: '${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(10000)}',
+          rect: rect,
+          pageNumber: page.pageNumber,
+          createdAt: DateTime.now(),
+          timestamps: [], // No sync points initially
+          beatNumbers: [], // No beat sync initially
+        );
+
+        newRectangles.add(rectangle);
+      }
+    }
+
+    // Add all new rectangles
+    for (final rectangle in newRectangles) {
+      if (!_rectanglesByPage.containsKey(rectangle.pageNumber)) {
+        _rectanglesByPage[rectangle.pageNumber] = [];
+      }
+      _rectanglesByPage[rectangle.pageNumber]!.add(rectangle);
+    }
+
+    developer.log('Created ${newRectangles.length} rectangles from measure detection');
+    _notifyRectanglesChanged();
+    notifyListeners();
   }
 }

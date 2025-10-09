@@ -836,3 +836,35 @@ lib/
   - Fixed both metronome_settings.dart and song_archive.dart to use the new helper class
   - Ensured backward compatibility with proper fallback to video mode for unknown values
   - Verified import logic properly handles Beat mode, loop settings, and beat sync points
+- **Fixed loop mode functionality to work correctly**:
+  - Fixed TickSubscription cancellation in pause() method to prevent hanging tick streams
+  - Properly implemented metronome cleanup by calling metronome.cancel() in dispose()
+  - Fixed loop monitoring by using totalBeats instead of deprecated tickCount
+  - Added Android metronome plugin fix with immediate tick 0 to resolve timing inconsistencies
+  - Verified loop functionality works correctly with proper counter and cleanup
+- **Removed PDF file sharing intent support**:
+  - Removed PDF file sharing from Android manifest (no more intent filters for application/pdf)
+  - Removed PDF document type from iOS Info.plist (no longer accepts PDF files via sharing)
+  - Simplified app to only accept ZIP/Symph archive files for sharing
+  - Updated _handleSharedFiles to only process .zip and .symph files
+  - Removed all PDF-specific dialog methods and sharing workflows
+  - Focused sharing on complete song archives rather than individual PDF files
+- **Implemented comprehensive auto-detect measures feature**:
+  - Created complete data models (MeasureDetectionResult, PageMeasures, MeasureRect) for API integration
+  - Built MeasureDetectionService with HTTP client support for https://dabba.princesamuel.me/symph/upload_and_predict
+  - Added purple "Auto-Detect" button to page controls that appears only in design mode when PDF is loaded
+  - Implemented auto-detect handler with confirmation dialog, loading progress, and success/error feedback
+  - Added scale factor calculation to transform API pixel coordinates to PDF viewer coordinates
+  - Integrated with RectangleProvider.createRectanglesFromDetection() for batch rectangle creation
+  - Added comprehensive error handling for network issues, file size limits, and API failures
+  - Removed 30-second timeout to allow processing of large/complex PDFs
+  - Added user cancellation support with HTTP client termination and progress feedback
+  - Implemented replace option: users can choose to preserve existing rectangles or start fresh
+  - Clear warning dialogs when existing rectangles and sync points would be deleted
+  - Success messages indicate whether rectangles were "added" or "replaced"
+- **Enhanced filename preservation throughout the system**:
+  - Modified _copyPdfToSongDirectory() to preserve original PDF filenames instead of renaming to "score.pdf"
+  - Added filename sanitization to remove problematic characters while keeping readable names
+  - Updated song archive service to handle any PDF filename in archives (not just "score.pdf")
+  - Archive creation now includes original filename, archive import preserves original name
+  - Measure detection API now receives meaningful filenames for better tracking and debugging

@@ -584,14 +584,20 @@ class SongProvider extends ChangeNotifier {
         await songDir.create(recursive: true);
       }
       
-      // Use original filename or create a simple name
-      final extension = path.extension(sourceFile.path);
-      final fileName = 'score$extension';
+      // Preserve original filename, sanitizing it for safety
+      final originalFileName = path.basename(sourceFile.path);
+      // Sanitize filename but keep the extension
+      final extension = path.extension(originalFileName);
+      final nameWithoutExt = path.basenameWithoutExtension(originalFileName);
+      // Remove problematic characters but keep the filename readable
+      final sanitizedName = nameWithoutExt.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+      final fileName = '$sanitizedName$extension';
+
       final destinationPath = path.join(songDir.path, fileName);
-      
+
       // Copy the file
       await sourceFile.copy(destinationPath);
-      
+
       // Return relative path from app documents directory
       final relativePath = path.join('songs', sanitizedSongName, fileName);
       developer.log('PDF copied to song directory, relative path: $relativePath');

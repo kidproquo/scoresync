@@ -10,6 +10,8 @@ class PageControls extends StatelessWidget {
   final VoidCallback? onSelectPdf;
   final bool canSelectPdf;
   final bool isDesignMode;
+  final VoidCallback? onAutoDetectMeasures;
+  final bool hasPdf;
 
   const PageControls({
     super.key,
@@ -22,6 +24,8 @@ class PageControls extends StatelessWidget {
     this.onSelectPdf,
     this.canSelectPdf = true,
     required this.isDesignMode,
+    this.onAutoDetectMeasures,
+    this.hasPdf = false,
   });
 
   @override
@@ -70,6 +74,19 @@ class PageControls extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
             ),
+            if (hasPdf && onAutoDetectMeasures != null) ...[
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: onAutoDetectMeasures,
+                icon: const Icon(Icons.auto_awesome, size: 18),
+                label: const Text('Auto-Detect'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+              ),
+            ],
           ],
         ],
       ),

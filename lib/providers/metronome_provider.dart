@@ -358,8 +358,8 @@ class MetronomeProvider extends ChangeNotifier {
           notifyListeners();
 
           // Check for loop end in Beat Mode (also needed in count-in method) - stop after first beat of next measure, wait 3s, then restart
-          if (_settings.isLoopActive && _settings.loopEndBeat != null && _totalBeats > _settings.loopEndBeat!) {
-            developer.log('Loop end reached at beat $_totalBeats, stopping for 3-second pause before restart');
+          if (_settings.isLoopActive && _settings.loopEndBeat != null && _absoluteBeatCount > _settings.loopEndBeat!) {
+            developer.log('Loop end reached at beat $_absoluteBeatCount, stopping for 3-second pause before restart');
 
             // Stop the metronome
             pauseMetronome();
@@ -403,6 +403,8 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   void pauseMetronome() {
+    _tickSubscription?.cancel();  // Cancel tick events to stop beat counting
+    _tickSubscription = null;
     _metronome.pause();
     _countInMetronome.pause();
     _isPlaying = false;
@@ -413,7 +415,7 @@ class MetronomeProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    developer.log('Metronome paused (beat counter preserved: $_totalBeats)');
+    developer.log('Metronome paused (beat counter preserved: $_absoluteBeatCount)');
   }
 
   void _cleanStopForRestart() {
